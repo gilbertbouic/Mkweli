@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body text-center">
+                <h4>Step 2: Import Your First Sanctions List</h4>
+                <p>Download a CSV from OFAC/UN/EU, then upload below.</p>
+                <form method="POST" enctype="multipart/form-data">
+                    <select name="list_name" class="form-select mb-3">
+                        <option value="OFAC">OFAC (USA)</option>
+                        <option value="UN">UN Consolidated</option>
+                        <option value="EU">EU Consolidated</option>
+                    </select>
+                    <input type="file" name="file" class="form-control mb-3" accept=".csv" required>
+                    <button type="submit" class="btn btn-success w-100">Import List & Continue</button>
+                </form>
+                <a href="{{ url_for('sanctions_lists') }}" class="btn btn-link mt-3">Skip for now</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

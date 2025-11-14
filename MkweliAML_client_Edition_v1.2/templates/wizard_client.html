@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body text-center">
+                <h4>Step 3: Add Your First Client</h4>
+                <p>Enter details to complete setup.</p>
+                <form method="POST">
+                    <input type="text" name="full_name" placeholder="Full Name" class="form-control mb-3" required>
+                    <input type="text" name="id_number" placeholder="ID Number" class="form-control mb-3">
+                    <input type="date" name="date_of_birth" class="form-control mb-3">
+                    <input type="text" name="address" placeholder="Address" class="form-control mb-3">
+                    <button type="submit" class="btn btn-success w-100">Add Client & Finish</button>
+                </form>
+                <a href="{{ url_for('clients') }}" class="btn btn-link mt-3">Skip for now</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MkweliAML Screening Report - {{ report.client_info.full_name }}</title>
+    <div class="company-logo">{{ org_name }}</div>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+            @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 10px;
+                color: #666;
+            }
+        }
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.4;
+            color: #333;
+        }
+        .header {
+            border-bottom: 3px solid #2c3e50;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+        .company-info {
+            float: right;
+            text-align: right;
+            font-size: 12px;
+        }
+        .risk-high {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .risk-low {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .section {
+            margin-bottom: 1.5rem;
+        }
+        .section-title {
+            background-color: #f8f9fa;
+            padding: 0.5rem;
+            border-left: 4px solid #2c3e50;
+            margin-bottom: 1rem;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 0.5rem;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .hash-box {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 1rem;
+            font-family: monospace;
+            font-size: 10px;
+            word-break: break-all;
+            margin: 1rem 0;
+        }
+        .footer {
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid #ddd;
+            font-size: 10px;
+            color: #666;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="company-info">
+            <div class="logo">MkweliAML</div>
+            <div>Anti-Money Laundering Compliance</div>
+            <div>Report ID: {{ report.report_id }}</div>
+            <div>Generated: {{ report.screening_date }}</div>
+        </div>
+        <h1>Client Screening Report</h1>
+        <p>Know Your Customer (KYC) & Anti-Money Laundering Compliance</p>
+    </div>
+
+    <!-- Client Information -->
+    <div class="section">
+        <div class="section-title">1. Client Information</div>
+        <table>
+            <tr>
+                <th width="25%">Full Name</th>
+                <td>{{ report.client_info.full_name }}</td>
+            </tr>
+            <tr>
+                <th>Client ID</th>
+                <td>{{ report.client_info.id }}</td>
+            </tr>
+            <tr>
+                <th>ID Number</th>
+                <td>{{ report.client_info.id_number or 'Not Provided' }}</td>
+            </tr>
+            <tr>
+                <th>Date of Birth</th>
+                <td>{{ report.client_info.date_of_birth or 'Not Provided' }}</td>
+            </tr>
+            <tr>
+                <th>Address</th>
+                <td>{{ report.client_info.address or 'Not Provided' }}</td>
+            </tr>
+            <tr>
+                <th>Client Since</th>
+                <td>{{ report.client_info.created_at[:10] }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Screening Results -->
+    <div class="section">
+        <div class="section-title">2. Screening Results</div>
+        
+        <table>
+            <tr>
+                <th width="25%">Risk Assessment</th>
+                <td class="risk-{{ report.risk_level }}">{{ report.risk_assessment }}</td>
+            </tr>
+            <tr>
+                <th>Matches Found</th>
+                <td>{{ report.matches_found }} potential match(es)</td>
+            </tr>
+            <tr>
+                <th>Screening Date</th>
+                <td>{{ report.screening_date }}</td>
+            </tr>
+        </table>
+
+        {% if report.matches_found > 0 %}
+        <div style="margin-top: 1rem;">
+            <h4>Potential Matches Identified:</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Source List</th>
+                        <th>Additional Information</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for match in report.matches %}
+                    <tr>
+                        <td>{{ match.full_name }}</td>
+                        <td>{{ match.source_list }}</td>
+                        <td>{{ match.other_info or 'No additional information' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sanctions Lists Used -->
+    <div class="section">
+        <div class="section-title">3. Sanctions Lists Screened</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>List Name</th>
+                    <th>Last Updated</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for list in report.sanctions_lists_used %}
+                <tr>
+                    <td>{{ list.list_name }}</td>
+                    <td>{{ list.last_updated[:10] if list.last_updated else 'Not Available' }}</td>
+                    <td>{{ 'Active' if list.last_updated else 'Inactive' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Data Integrity Verification -->
+    <div class="section">
+        <div class="section-title">4. Data Integrity Verification</div>
+        <p><strong>SHA-256 Digital Fingerprint:</strong></p>
+        <div class="hash-box">
+            {{ report.sha256_hash }}
+        </div>
+        <p style="font-size: 11px; color: #666;">
+            <strong>Verification Note:</strong> This cryptographic hash verifies the integrity of this report. 
+            Any alteration to the content will change this hash value, indicating tampering.
+            This hash was generated on: {{ report.screening_date }}
+        </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p>
+            <strong>MkweliAML Compliance Software</strong><br>
+            This report was automatically generated by MkweliAML Anti-Money Laundering compliance system.<br>
+            Report ID: {{ report.report_id }} | Screening Date: {{ report.screening_date }}<br>
+            For verification purposes, maintain this report with intact SHA-256 hash.
+        </p>
+    </div>
+</body>
+</html>
