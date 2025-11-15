@@ -63,14 +63,6 @@ python init_db.py
 - Monthly: Download fresh lists from official sources (UN: https://www.un.org/securitycouncil/content/un-sc-consolidated-list, UK: https://www.gov.uk/government/publications/the-uk-sanctions-list, US/OFAC: https://ofac.treasury.gov/specially-designated-nationals-and-blocked-persons-list-sdn-human-readable-lists).
 - Compile into XLSX (sheets named "UN", "UK", "US"), re-import via the app.
 
-## Testing Locally
-To verify it's functional on your machine (before going public):
-1. Delete `mkweli_aml.db` (fresh start).
-2. Run `python init_db.py`.
-3. Start the app (`./run_linux.sh`).
-4. In browser: Set password, import `database.xlsx`, add a test client (e.g., name "Abdul Rahman"), check sanctions (should flag matches), generate report.
-5. Check console/DB for errors. If issues (e.g., import fails), share output—it's likely a simple fix like path or dep.
-
 ## Contributing
 Pull requests welcome! For bugs/features:
 - Open an issue.
