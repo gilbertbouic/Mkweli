@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body text-center">
+                <h4>Step 2: Import Your First Sanctions List</h4>
+                <p>Upload database.xlsx from root or fetch from GitHub.</p>
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="file" name="file" class="form-control mb-3" accept=".xlsx" title="Upload XLSX for sanctions data">
+                    <button type="submit" class="btn btn-success" title="Import and continue to add client">Import & Continue</button>
+                </form>
+                <a href="{{ url_for('wizard_client') }}" class="btn btn-secondary mt-2" title="Skip import, add client now">Skip Import</a>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary mt-2" title="Skip wizard, go to dashboard">Skip to Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
