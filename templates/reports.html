@@ -56,7 +56,6 @@
                                 <th>Last Updated</th>
                                 <th>Status</th>
                             </tr>
-                <div class="company-logo">{{ org_name }}</div>
                         </thead>
                         <tbody>
                             {% for list in list_status %}
@@ -81,18 +80,10 @@
                         </tbody>
                     </table>
                 </div>
-                {% else %}
-                <p class="text-muted">No sanctions lists configured.</p>
                 {% endif %}
 
-           </div>
-        </div>
-    </div>
-</div>
-
-<!-- Audit Logs Section -->
-<div class="row mt-4">
-    <div class="col-12">
+    <!-- Recent Screening Activity (from truncated part) -->
+    <div class="col-md-6 mb-4">
         <div class="card">
             <div class="card-header bg-secondary text-white">
                 <h5 class="card-title mb-0">Recent Screening Activity</h5>
