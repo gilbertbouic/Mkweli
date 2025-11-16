@@ -1,22 +1,14 @@
-# MkweliAML - Open-Source Browser-Based AML/KYC Sanctions Screening Tool
+MkweliAML - Open-Source AML & KYC Tool for Low-Budget Users
 
-MkweliAML is a lightweight, privacy-focused Anti-Money Laundering (AML) and Know Your Customer (KYC) compliance tool. Designed for NGOs, small organizations, and compliance teams in resource-limited environments, it runs locally in your browser via a simple Python server. No cloud dependencies, no internet required after setup—ensuring data privacy.
+Overview:
+- Free, local sanctions screening using official sources (UN, OFAC, UK, EU, Canada).
+- Auto-fetches lists on startup; stores in local DB (no cloud to avoid manipulation).
+- Manual uploads fallback. Data retained offline.
+- Setup: python init_db.py; python app.py
+- Offline: Comment @app.before_first_request in app.py.
+- Logs: Check logs/app.log for errors (e.g., format changes).
+- Tests: Run python -m unittest tests/test_parsers.py for parser validation.
 
-Key features:
-- **Setup Wizard**: Guides through master password setup, sanctions list import, and first client addition.
-- **Sanctions Management**: Import consolidated lists from XLSX (e.g., UN, UK, US/EU sources) or fetch from GitHub. Auto-parses and stores in local SQLite DB.
-- **Client Management**: Add/delete clients, perform fuzzy-matched sanctions checks (using fuzzywuzzy for accurate name matching), update risk scores.
-- **Reports**: Generate HTML/PDF reports with SHA-256 hashes for integrity, match details, and source documentation.
-- **Dashboard**: Stats on clients, flagged cases, recent activity, and list status.
-- **Security**: Master password hashing, failed login lockouts, audit logs.
-- **Cross-Platform**: Runs on Ubuntu, Windows, Mac via simple scripts.
+Requirements: See requirements.txt (no extras needed).
 
-Built with assistance from Grok AI for ethical, democratized development. Licensed under Apache-2.0.
-
-## Installation
-
-1. **Prerequisites**:
-   - Python 3.8+ (tested on 3.12).
-   - Git (optional for cloning).
-
-2. **Clone the Repo**:
+For format changes: Manual upload or update parsers in app.py.

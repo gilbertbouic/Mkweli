@@ -13,8 +13,13 @@ mkweli_aml.db
 
 # Uploads contents (keep the folder, ignore files inside)
 uploads/*
-!uploads/.gitkeep  # Optional: If you add a .gitkeep to keep the empty folder in Git
+!uploads/.gitkeep
+
+# Logs
+logs/
 
 # Other ignores
-.DS_Store  # macOS junk
+.DS_Store
 *.log
+*.bak
+*.swp
