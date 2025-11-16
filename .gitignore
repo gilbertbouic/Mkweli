@@ -1,0 +1,20 @@
+# Python compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+
+# Database and temp files
+mkweli_aml.db
+*.db-journal
+
+# Uploads contents (keep the folder, ignore files inside)
+uploads/*
+!uploads/.gitkeep  # Optional: If you add a .gitkeep to keep the empty folder in Git
+
+# Other ignores
+.DS_Store  # macOS junk
+*.log
