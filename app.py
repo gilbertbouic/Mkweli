@@ -10,11 +10,15 @@ import re
 import hashlib
 import json
 import shutil
+import logging
 from datetime import datetime, timedelta
 from functools import wraps
 from fuzzywuzzy import fuzz
 import pandas as pd
 import requests
+import csv
+import xml.etree.ElementTree as ET
+from io import StringIO, BytesIO
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -34,6 +38,10 @@ app.config.from_object(ProductionConfig)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs('templates', exist_ok=True)
 os.makedirs('static', exist_ok=True)
+os.makedirs('logs', exist_ok=True)  # For logging
+
+# Setup logging
+logging.basicConfig(filename='logs/app.log', level=logging.ERROR, format='%(asctime)s %(levelname)s: %(message)s')
 
 auth_system = AuthSystem()
 
@@ -59,19 +67,20 @@ with app.app_context():
                                 names = [str(cell).split(':', 1)[-1].strip() if ':' in str(cell) else str(cell).strip() for cell in df.iloc[:, 0] if pd.notna(cell) and str(cell).strip()]
                                 for name in names:
                                     cursor.execute('''
-                                        INSERT INTO sanctions_list (source_list, full_name, other_info, list_version_date)
+                                        INSERT OR IGNORE INTO sanctions_list (source_list, full_name, other_info, list_version_date)
                                         VALUES (?, ?, ?, CURRENT_TIMESTAMP)
                                     ''', (sheet_name.upper(), name, 'From official UK/US/UN lists',))
-                                imported_count += len(names)
+                                    if cursor.rowcount > 0:
+                                        imported_count += 1
                                 cursor.execute('''
                                     INSERT OR REPLACE INTO list_metadata (list_name, last_updated)
                                     VALUES (?, CURRENT_TIMESTAMP)
                                 ''', (sheet_name.upper(),))
-                            print(f'Auto-loaded {imported_count} entries from XLSX')
+                            print(f'Auto-loaded {imported_count} unique entries from XLSX')
                             flash('Sanctions data auto-loaded from XLSX!', 'success')
                             session['setup_complete'] = True
                         except Exception as e:
-                            print(f'Error auto-loading XLSX: {str(e)}')
+                            logging.error(f'Error auto-loading XLSX: {str(e)}')
                             flash(f'Error auto-loading XLSX: {str(e)}', 'error')
 
         def clear_logs_if_needed():
@@ -100,6 +109,159 @@ def login_required(f):
 def check_password_set():
     if not auth_system.is_password_set() and request.endpoint not in ('setup_password', 'static'):
         return redirect(url_for('setup_password'))
+
+# Use a flag for run-once (since Flask 3.0 deprecates before_first_request; this works in 2.3.3 but future-proof)
+fetched_lists = False
+@app.before_request
+def auto_fetch_if_not_done():
+    global fetched_lists
+    if not fetched_lists:
+        auto_fetch_sanctions_lists()
+        fetched_lists = True
+
+def auto_fetch_sanctions_lists():
+    sources = {
+        'UN': {
+            'url': 'https://www.un.org/securitycouncil/sites/www.un.org.securitycouncil/files/consolidated.xml',  # Official UN XML, last Nov 6 2025
+            'parser': parse_un_xml
+        },
+        'OFAC': {
+            'url': 'https://www.treasury.gov/ofac/downloads/sdn.csv',  # Official US CSV
+            'parser': parse_ofac_csv
+        },
+        'UK': {
+            'url': 'https://assets.publishing.service.gov.uk/media/66f7b2d2f89c2f0d1d2b2b2a/UK_Sanctions_List.ods',  # Latest as of Nov 16 2025; monitor for changes
+            'parser': parse_uk_ods
+        },
+        'EU': {
+            'url': 'https://webgate.ec.europa.eu/europeaid/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content',  # Official EU XML
+            'parser': parse_eu_xml
+        },
+        'CANADA': {
+            'url': 'https://www.international.gc.ca/world-monde/assets/office_docs/international_relations-relations_internationales/sanctions/consolidated_list.xml',  # Official Canada XML, last Nov 6 2025
+            'parser': parse_canada_xml
+        }
+    }
+    for source, info in sources.items():
+        try:
+            response = requests.get(info['url'], timeout=10)
+            response.raise_for_status()
+            content_hash = hashlib.sha256(response.content).hexdigest()
+            with db.get_cursor() as cursor:
+                cursor.execute('SELECT value FROM system_metadata WHERE key = ?', (f'{source}_hash',))
+                last_hash = cursor.fetchone()
+                if last_hash and last_hash[0] == content_hash:
+                    continue  # No change, skip
+            if 'xml' in response.headers.get('Content-Type', ''):
+                data = response.content
+            else:
+                data = response.text
+            entries = info['parser'](data, source)
+            with db.get_cursor() as cursor:
+                cursor.execute('DELETE FROM sanctions_list WHERE source_list = ?', (source,))  # Clear old
+                existing = set(row[0].lower() for row in cursor.execute('SELECT full_name FROM sanctions_list').fetchall())
+                imported = 0
+                for entry in entries:
+                    name_lower = entry['full_name'].lower()
+                    if name_lower not in existing and len(entry['full_name']) > 0:
+                        cursor.execute('INSERT INTO sanctions_list (source_list, full_name, other_info, list_version_date) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
+                                       (source, entry['full_name'], entry.get('other_info', ''),))
+                        imported += 1
+                        existing.add(name_lower)
+                cursor.execute('INSERT OR REPLACE INTO list_metadata (list_name, last_updated) VALUES (?, CURRENT_TIMESTAMP)', (source,))
+                cursor.execute('INSERT OR REPLACE INTO system_metadata (key, value) VALUES (?, ?)', (f'{source}_hash', content_hash))
+            logging.info(f'Fetched and imported {imported} new unique entries from {source}')
+            flash(f'Updated {source} list with {imported} new entries!', 'success')
+        except requests.RequestException as e:
+            logging.error(f'Fetch failed for {source}: {str(e)}')
+            flash(f'Failed to update {source} list: Network error. Using cached local data.', 'warning')
+        except Exception as e:
+            logging.error(f'Parse failed for {source}: {str(e)}')
+            flash(f'Format change detected for {source} list: {str(e)}. Manual update recommended.', 'error')
+
+# Parser functions (each <50 lines, with error handling)
+def parse_un_xml(data, source):
+    try:
+        root = ET.fromstring(data)
+        entries = []
+        for indiv in root.findall('.//INDIVIDUAL'):
+            first = indiv.find('FIRST_NAME').text or ''
+            second = indiv.find('SECOND_NAME').text or ''
+            name = f'{first} {second}'.strip()
+            if name:
+                other_info = indiv.find('COMMENTS1').text or ''
+                entries.append({'full_name': name, 'other_info': other_info})
+        return entries
+    except ET.ParseError as e:
+        raise ValueError("Invalid XML format for UN list") from e
+    except AttributeError:
+        raise ValueError("Unexpected XML structure change in UN list")
+
+def parse_ofac_csv(data, source):
+    try:
+        reader = csv.reader(StringIO(data))
+        entries = []
+        header = next(reader, None)
+        if not header or 'ent_num' not in header[0]:
+            raise ValueError("Missing or changed CSV header in OFAC list")
+        for row in reader:
+            if row and len(row) > 1:
+                name = row[1].strip()
+                other_info = row[-1] if len(row) > 11 else ''
+                if name:
+                    entries.append({'full_name': name, 'other_info': other_info})
+        return entries
+    except csv.Error as e:
+        raise ValueError("Invalid CSV format for OFAC list") from e
+
+def parse_uk_ods(data, source):
+    try:
+        df = pd.read_excel(BytesIO(data), engine='openpyxl' if data[0:4] == b'PK\x03\x04' else 'odf', sheet_name=0, header=1)  # Detect engine by magic bytes
+        entries = []
+        for _, row in df.iterrows():
+            name_parts = [str(row.get(f'Name {i}', '')) for i in range(1, 7)]
+            name = ' '.join(part.strip() for part in name_parts if part and part != 'nan')
+            if name:
+                other_info = str(row.get('Remarks', '')) or ''
+                entries.append({'full_name': name, 'other_info': other_info})
+        return entries
+    except ValueError as e:
+        if 'odf' in str(e) or 'openpyxl' in str(e):
+            raise ValueError("Invalid file format for UK list; try different extension") from e
+        raise ValueError("Invalid ODS/XLSX structure or tampered columns in UK list") from e
+    except Exception as e:
+        raise ValueError("Unexpected error in UK ODS parsing") from e
+
+def parse_eu_xml(data, source):
+    try:
+        root = ET.fromstring(data)
+        entries = []
+        for entity in root.findall('.//sanctionEntity'):
+            name_elem = entity.find('nameAlias')
+            name = name_elem.get('wholeName') if name_elem is not None else ''
+            if name:
+                other_info = entity.find('regulation/regulationSummary').text or ''
+                entries.append({'full_name': name.strip(), 'other_info': other_info})
+        return entries
+    except ET.ParseError as e:
+        raise ValueError("Invalid XML format for EU list") from e
+    except AttributeError:
+        raise ValueError("Unexpected XML structure change in EU list")
+
+def parse_canada_xml(data, source):
+    try:
+        root = ET.fromstring(data)
+        entries = []
+        for item in root.findall('.//item'):
+            name = item.find('name').text or ''
+            if name:
+                other_info = item.find('description').text or ''
+                entries.append({'full_name': name.strip(), 'other_info': other_info})
+        return entries
+    except ET.ParseError as e:
+        raise ValueError("Invalid XML format for Canada list") from e
+    except AttributeError:
+        raise ValueError("Unexpected XML structure change in Canada list")
 
 @app.route('/')
 @app.route('/index')
@@ -202,8 +364,13 @@ def check_sanctions(client_id):
 @app.route('/sanctions_lists', methods=['GET', 'POST'])
 @login_required
 def sanctions_lists():
-    # Placeholder for sanctions lists management
-    return render_template('sanctions_lists.html')
+    if request.method == 'POST' and request.form.get('action') == 'refresh':
+        auto_fetch_sanctions_lists()
+        return redirect(url_for('sanctions_lists'))
+    with db.get_cursor() as cursor:
+        cursor.execute('SELECT list_name, last_updated, (SELECT COUNT(*) FROM sanctions_list WHERE source_list = list_name) AS count FROM list_metadata')
+        lists = cursor.fetchall()
+    return render_template('sanctions_lists.html', lists=lists)
 
 @app.route('/import_consolidated', methods=['POST'])
 @login_required
@@ -211,38 +378,40 @@ def import_consolidated():
     files = request.files.getlist('files')
     imported = 0
     for file in files:
-        if file.filename.endswith(('.xlsx', '.csv', '.html')):
-            # Basic handling - expand as needed
+        if file.filename:
             try:
-                if file.filename.endswith('.xlsx'):
-                    df = pd.read_excel(file)
-                elif file.filename.endswith('.csv'):
-                    df = pd.read_csv(file)
-                else:
-                    # For HTML, parse accordingly
-                    content = file.read().decode('utf-8')
-                    # Placeholder parsing
-                    df = pd.DataFrame({'full_name': re.findall(r'Name: (.*?)<', content)})  # Mock
                 source = file.filename.split('.')[0].upper()
+                data = file.read()
+                if file.filename.endswith('.xml'):
+                    entries = parse_un_xml(data, source) if 'UN' in source else parse_eu_xml(data, source) if 'EU' in source else parse_canada_xml(data, source) if 'CANADA' in source else []
+                elif file.filename.endswith('.csv'):
+                    entries = parse_ofac_csv(data.decode('utf-8'), source)
+                elif file.filename.endswith(('.ods', '.xlsx')):
+                    entries = parse_uk_ods(data, source)
+                else:
+                    raise ValueError("Unsupported file format")
                 with db.get_cursor() as cursor:
-                    for _, row in df.iterrows():
-                        name = row.get('full_name', '')  # Assume column
-                        if name:
+                    cursor.execute('DELETE FROM sanctions_list WHERE source_list = ?', (source,))
+                    existing = set(row[0].lower() for row in cursor.execute('SELECT full_name FROM sanctions_list').fetchall())
+                    for entry in entries:
+                        name_lower = entry['full_name'].lower()
+                        if name_lower not in existing and len(entry['full_name']) > 0:
                             cursor.execute('INSERT INTO sanctions_list (source_list, full_name, other_info, list_version_date) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
-                                           (source, name, 'Imported from file',))
+                                           (source, entry['full_name'], entry.get('other_info', ''),))
                             imported += 1
-                    cursor.execute('INSERT OR REPLACE INTO list_metadata (list_name, last_updated) VALUES (?, CURRENT_TIMESTAMP)',
-                                   (source,))
+                            existing.add(name_lower)
+                    cursor.execute('INSERT OR REPLACE INTO list_metadata (list_name, last_updated) VALUES (?, CURRENT_TIMESTAMP)', (source,))
+                file.seek(0)
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], file.filename))
             except Exception as e:
-                flash(f'Error importing {file.filename}: {str(e)}', 'error')
-    flash(f'Imported {imported} entries from consolidated lists!', 'success')
+                logging.error(f'Import failed for {file.filename}: {str(e)}')
+                flash(f'Error importing {file.filename}: {str(e)}. Format may have changed.', 'error')
+    flash(f'Imported {imported} new unique entries from consolidated lists!', 'success')
     return redirect(url_for('sanctions_lists'))
 
 @app.route('/reports')
 @login_required
 def reports():
-    # Fetch data for reports
     with db.get_cursor() as cursor:
         cursor.execute('SELECT * FROM clients ORDER BY created_at DESC')
         clients = cursor.fetchall()
@@ -255,7 +424,6 @@ def reports():
 @app.route('/generate_report/<int:client_id>')
 @login_required
 def generate_report(client_id):
-    # Placeholder for report generation
     try:
         with db.get_cursor() as cursor:
             cursor.execute('SELECT * FROM clients WHERE id = ?', (client_id,))
@@ -264,15 +432,19 @@ def generate_report(client_id):
                 flash('Client not found', 'error')
                 return redirect(url_for('reports'))
             
-            # Mock report data
+            cursor.execute('SELECT full_name, source_list, other_info FROM sanctions_list WHERE LOWER(full_name) LIKE ?', (f'%{client_info["full_name"].lower()}%',))
+            matches = cursor.fetchall()
+            cursor.execute('SELECT list_name, last_updated FROM list_metadata')
+            lists_used = cursor.fetchall()
+            
             report_data = {
                 'report_id': f'R-{client_id}-{datetime.now().strftime("%Y%m%d")}',
                 'screening_date': datetime.now().isoformat(),
                 'client_info': client_info,
                 'risk_assessment': 'Low' if client_info['risk_score'] == 0 else 'High',
-                'matches': [],  # Fetch matches if any
-                'sanctions_lists_used': [],  # Fetch from metadata
-                'sha256_hash': hashlib.sha256(str(client_info).encode()).hexdigest()
+                'matches': matches,
+                'sanctions_lists_used': lists_used,
+                'sha256_hash': hashlib.sha256(json.dumps(client_info).encode()).hexdigest()  # Improved hash
             }
             cursor.execute('INSERT INTO audit_log (user_action, client_id, details) VALUES (?, ?, ?)',
                            ('Report Generated', client_id, f'Generated report with hash: {report_data["sha256_hash"][:16]}...'))
@@ -289,6 +461,7 @@ def generate_report(client_id):
         else:
             return render_template('report_template.html', report=report_data, org_name=org_name)
     except Exception as e:
+        logging.error(f'Error generating report for client {client_id}: {str(e)}')
         flash(f'Error generating report: {str(e)}', 'error')
         return redirect(url_for('reports'))
 
@@ -333,8 +506,6 @@ def clear_all_activity():
                       ('System Action', 'All activity logs cleared by user'))
     flash('All activity logs have been cleared successfully!', 'success')
     return redirect(url_for('index'))
-
-# Add more routes as needed, e.g., for wizard, import_consolidated, delete_client, etc.
 
 if __name__ == '__main__':
     print("Starting MkweliAML AML & KYC Sanctions Compliance")

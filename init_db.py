@@ -19,15 +19,15 @@ def init_database():
         )
     ''')
 
-    # 2. Table for storing sanctions lists
+    # 2. Table for storing sanctions lists - Added UNIQUE on (source_list, full_name) for dedup
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS sanctions_list (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            source_list TEXT NOT NULL, -- e.g., 'OFAC', 'UN'
-            original_id TEXT, -- The ID from the original list
+            source_list TEXT NOT NULL,
             full_name TEXT NOT NULL,
-            other_info TEXT, -- Could include address, type of sanction, etc.
-            list_version_date TEXT -- To track when this entry was added from the source
+            other_info TEXT,
+            list_version_date TEXT,
+            UNIQUE (source_list, full_name)
         )
     ''')
 
@@ -37,7 +37,7 @@ def init_database():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             user_action TEXT NOT NULL,
-            client_id INTEGER, -- Can be NULL if action isn't client-specific
+            client_id INTEGER,
             details TEXT,
             FOREIGN KEY (client_id) REFERENCES clients (id)
         )
@@ -47,16 +47,16 @@ def init_database():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS list_metadata (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            list_name TEXT UNIQUE NOT NULL, -- e.g., 'OFAC SDN'
+            list_name TEXT UNIQUE NOT NULL,
             last_updated TIMESTAMP
         )
     ''')
 
-    # 5. System authentication table - Corrected: Removed NOT NULL from master_password_hash to allow NULL for unset
+    # 5. System authentication table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS system_auth (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            master_password_hash TEXT,  -- Allow NULL for initial unset state
+            master_password_hash TEXT,
             setup_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_login TIMESTAMP,
             failed_attempts INTEGER DEFAULT 0,
@@ -65,7 +65,7 @@ def init_database():
         )
     ''')
 
-    # 6. Added: System metadata table for app features like log clearing
+    # 6. System metadata table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS system_metadata (
             key TEXT PRIMARY KEY,

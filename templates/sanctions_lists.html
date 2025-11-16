@@ -3,6 +3,9 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Sanctions Lists Management</h1>
+    <form method="POST">
+        <button type="submit" name="action" value="refresh" class="btn btn-primary">Refresh Lists</button>
+    </form>
 </div>
 
 <div class="row">
@@ -13,7 +16,7 @@
                 <h5>Import Consolidated List</h5>
             </div>
             <div class="card-body">
-                <p>Upload all 4 files (UN.html, OFAC.csv, UK.html, EU.csv) for auto-consolidation.</p>
+                <p>Upload files (XML, CSV, ODS, XLSX) for manual import as fallback. Auto-fetch runs on startup from official free sources.</p>
                 <form method="POST" action="{{ url_for('import_consolidated') }}" enctype="multipart/form-data">
                     <input type="file" name="files" multiple required class="form-control mb-3">
                     <button type="submit" class="btn btn-success w-100">Import Consolidated</button>
@@ -22,6 +25,39 @@
         </div>
     </div>
 
-    <!-- Existing single import and lists ... (keep your original content here) -->
+    <!-- Lists Table -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Current Sanctions Lists</h5>
+            </div>
+            <div class="card-body">
+                {% if lists %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>List Name</th>
+                                <th>Entries</th>
+                                <th>Last Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for list in lists %}
+                            <tr>
+                                <td>{{ list.list_name }}</td>
+                                <td>{{ list.count }}</td>
+                                <td>{{ list.last_updated[:10] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No lists loaded yet. Click Refresh Lists.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
