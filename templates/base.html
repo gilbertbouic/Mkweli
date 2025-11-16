@@ -14,13 +14,13 @@
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
                 🦅 MkweliAML
-            <a class="nav-link {% if request.endpoint == 'settings' %}active{% endif %}" href="{{ url_for('settings') }}">Settings</a>
             </a>
             <div class="navbar-nav">
                 <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">Dashboard</a>
                 <a class="nav-link {% if request.endpoint == 'clients' %}active{% endif %}" href="{{ url_for('clients') }}">Client Management</a>
                 <a class="nav-link {% if request.endpoint == 'sanctions_lists' %}active{% endif %}" href="{{ url_for('sanctions_lists') }}">Sanctions Lists</a>
                 <a class="nav-link {% if request.endpoint == 'reports' %}active{% endif %}" href="{{ url_for('reports') }}">Reports</a>
+                <a class="nav-link {% if request.endpoint == 'settings' %}active{% endif %}" href="{{ url_for('settings') }}">Settings</a>
             </div>
         </div>
     </nav>

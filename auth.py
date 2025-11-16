@@ -12,7 +12,7 @@ class AuthSystem:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS system_auth (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    master_password_hash TEXT NOT NULL,
+                    master_password_hash TEXT,  -- Allow NULL for initial unset state
                     setup_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_login TIMESTAMP,
                     failed_attempts INTEGER DEFAULT 0,
@@ -26,7 +26,7 @@ class AuthSystem:
                 system_id = secrets.token_hex(16)
                 cursor.execute(
                     'INSERT INTO system_auth (system_id, master_password_hash) VALUES (?, ?)',
-                    (system_id, '')
+                    (system_id, None)  # None inserts as NULL, indicating unset
                 )
     
     def setup_master_password(self, password):
@@ -76,8 +76,8 @@ class AuthSystem:
     def is_password_set(self):
         with db.get_cursor() as cursor:
             cursor.execute('SELECT master_password_hash FROM system_auth LIMIT 1')
-            result = cursor.fetchone()
-            return result and result[0] != ''
+            row = cursor.fetchone()
+            return bool(row and row[0])
     
     def get_system_id(self):
         with db.get_cursor() as cursor:
