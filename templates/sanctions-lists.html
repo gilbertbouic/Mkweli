@@ -3,7 +3,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Sanctions Lists Management</h1>
-    <form method="POST">
+    <form method="POST" action="{{ url_for('update_lists') }}">
         <button type="submit" name="action" value="refresh" class="btn btn-primary me-2">Refresh Lists</button>
         <button type="submit" name="action" value="clear" class="btn btn-danger" onclick="return confirm('Clear all lists?')">Clear Lists</button>
     </form>
