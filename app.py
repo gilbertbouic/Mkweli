@@ -1,515 +1,465 @@
-#!/usr/bin/env python3
-"""
-MkweliAML - AML & KYC Sanctions Compliance
-Production version with ALL improvements
-"""
-
-import os
-import sys
-import re
-import hashlib
+import csv
+import difflib
+import io
 import json
-import shutil
-import logging
-from datetime import datetime, timedelta
-from functools import wraps
-from fuzzywuzzy import fuzz
+import os
 import pandas as pd
 import requests
-import csv
-import xml.etree.ElementTree as ET
-from io import StringIO, BytesIO
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, make_response, send_file
-from config import ProductionConfig
-from database import db
-from auth import AuthSystem
-
-try:
-    from weasyprint import HTML
-    WEASYPRINT_AVAILABLE = True
-except ImportError:
-    WEASYPRINT_AVAILABLE = False
+import unittest
+from flask import Flask, flash, jsonify, make_response, redirect, render_template, request, url_for
+from lxml import html
 
 app = Flask(__name__)
-app.config.from_object(ProductionConfig)
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs('templates', exist_ok=True)
-os.makedirs('static', exist_ok=True)
-os.makedirs('logs', exist_ok=True)  # For logging
+app.secret_key = os.urandom(24)  # For flash msgs
 
-# Setup logging
-logging.basicConfig(filename='logs/app.log', level=logging.ERROR, format='%(asctime)s %(levelname)s: %(message)s')
+# Cross-platform data dir
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+os.makedirs(DATA_DIR, exist_ok=True)
 
-auth_system = AuthSystem()
-
-def sanitize_input(input_str):
-    if input_str is None:
-        return None
-    return re.sub(r'[^\w\s-]', '', input_str)
-
-# Initialization code here (run once at startup)
-with app.app_context():
-    with app.test_request_context():
-        def load_xlsx_if_empty():
-            xlsx_path = 'database.xlsx'
-            if os.path.exists(xlsx_path):
-                with db.get_cursor() as cursor:
-                    cursor.execute('SELECT COUNT(*) FROM sanctions_list')
-                    if cursor.fetchone()[0] == 0:
-                        try:
-                            xls = pd.ExcelFile(xlsx_path)
-                            imported_count = 0
-                            for sheet_name in xls.sheet_names:
-                                df = pd.read_excel(xls, sheet_name=sheet_name, header=None)
-                                names = [str(cell).split(':', 1)[-1].strip() if ':' in str(cell) else str(cell).strip() for cell in df.iloc[:, 0] if pd.notna(cell) and str(cell).strip()]
-                                for name in names:
-                                    cursor.execute('''
-                                        INSERT OR IGNORE INTO sanctions_list (source_list, full_name, other_info, list_version_date)
-                                        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-                                    ''', (sheet_name.upper(), name, 'From official UK/US/UN lists',))
-                                    if cursor.rowcount > 0:
-                                        imported_count += 1
-                                cursor.execute('''
-                                    INSERT OR REPLACE INTO list_metadata (list_name, last_updated)
-                                    VALUES (?, CURRENT_TIMESTAMP)
-                                ''', (sheet_name.upper(),))
-                            print(f'Auto-loaded {imported_count} unique entries from XLSX')
-                            flash('Sanctions data auto-loaded from XLSX!', 'success')
-                            session['setup_complete'] = True
-                        except Exception as e:
-                            logging.error(f'Error auto-loading XLSX: {str(e)}')
-                            flash(f'Error auto-loading XLSX: {str(e)}', 'error')
-
-        def clear_logs_if_needed():
-            with db.get_cursor() as cursor:
-                cursor.execute('SELECT value FROM system_metadata WHERE key = "last_log_clear"')
-                last_clear = cursor.fetchone()
-                if last_clear:
-                    last_date = datetime.strptime(last_clear[0], '%Y-%m-%d')
-                    if datetime.now() - last_date > timedelta(days=30):
-                        cursor.execute('DELETE FROM audit_log WHERE timestamp < ?', (last_date,))
-                        cursor.execute('INSERT OR REPLACE INTO system_metadata (key, value) VALUES (?, ?)',
-                                       ('last_log_clear', datetime.now().strftime('%Y-%m-%d')))
-
-        load_xlsx_if_empty()
-        clear_logs_if_needed()
-
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get('authenticated'):
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-@app.before_request
-def check_password_set():
-    if not auth_system.is_password_set() and request.endpoint not in ('setup_password', 'static'):
-        return redirect(url_for('setup_password'))
-
-# Use a flag for run-once (since Flask 3.0 deprecates before_first_request; this works in 2.3.3 but future-proof)
-fetched_lists = False
-@app.before_request
-def auto_fetch_if_not_done():
-    global fetched_lists
-    if not fetched_lists:
-        auto_fetch_sanctions_lists()
-        fetched_lists = True
-
-def auto_fetch_sanctions_lists():
-    sources = {
-        'UN': {
-            'url': 'https://www.un.org/securitycouncil/sites/www.un.org.securitycouncil/files/consolidated.xml',  # Official UN XML, last Nov 6 2025
-            'parser': parse_un_xml
-        },
-        'OFAC': {
-            'url': 'https://www.treasury.gov/ofac/downloads/sdn.csv',  # Official US CSV
-            'parser': parse_ofac_csv
-        },
-        'UK': {
-            'url': 'https://assets.publishing.service.gov.uk/media/66f7b2d2f89c2f0d1d2b2b2a/UK_Sanctions_List.ods',  # Latest as of Nov 16 2025; monitor for changes
-            'parser': parse_uk_ods
-        },
-        'EU': {
-            'url': 'https://webgate.ec.europa.eu/europeaid/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content',  # Official EU XML
-            'parser': parse_eu_xml
-        },
-        'CANADA': {
-            'url': 'https://www.international.gc.ca/world-monde/assets/office_docs/international_relations-relations_internationales/sanctions/consolidated_list.xml',  # Official Canada XML, last Nov 6 2025
-            'parser': parse_canada_xml
-        }
+SANCTIONS_SOURCES = {
+    'UN': {
+        'base_url': 'https://www.un.org/securitycouncil/content/un-sc-consolidated-list',
+        'xml_path': "//a[contains(@href, 'consolidated.xml')]/@href",
+        'file': os.path.join(DATA_DIR, 'un_consolidated.xml'),
+        'error_msg': 'Network error on UN: Using cache'
+    },
+    'UK': {
+        'url': 'https://ofsistorage.blob.core.windows.net/publishlive/ConList.xml',
+        'file': os.path.join(DATA_DIR, 'uk_consolidated.xml'),
+        'error_msg': 'Network error on UK: Using cache'
+    },
+    'EU': {
+        'url': 'https://webgate.ec.europa.eu/europeaid/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw',
+        'file': os.path.join(DATA_DIR, 'eu_consolidated.xml'),
+        'error_msg': 'Network error on EU: Using cache'
+    },
+    'US': {
+        'url': 'https://www.treasury.gov/ofac/downloads/sdn.xml',
+        'file': os.path.join(DATA_DIR, 'us_sdn.xml'),
+        'error_msg': 'Network error on US: Using cache'
+    },
+    'CA': {
+        'url': 'https://open.canada.ca/data/en/dataset/82e08a00-9f81-40d0-9b6c-1a805cbc0865/resource/73c2a91d-652f-4af0-a194-f4b34de2eead/download/consolidated.xml',
+        'file': os.path.join(DATA_DIR, 'ca_consolidated.xml'),
+        'error_msg': 'Network error on CA: Using cache'
     }
-    for source, info in sources.items():
-        try:
-            response = requests.get(info['url'], timeout=10)
-            response.raise_for_status()
-            content_hash = hashlib.sha256(response.content).hexdigest()
-            with db.get_cursor() as cursor:
-                cursor.execute('SELECT value FROM system_metadata WHERE key = ?', (f'{source}_hash',))
-                last_hash = cursor.fetchone()
-                if last_hash and last_hash[0] == content_hash:
-                    continue  # No change, skip
-            if 'xml' in response.headers.get('Content-Type', ''):
-                data = response.content
-            else:
-                data = response.text
-            entries = info['parser'](data, source)
-            with db.get_cursor() as cursor:
-                cursor.execute('DELETE FROM sanctions_list WHERE source_list = ?', (source,))  # Clear old
-                existing = set(row[0].lower() for row in cursor.execute('SELECT full_name FROM sanctions_list').fetchall())
-                imported = 0
-                for entry in entries:
-                    name_lower = entry['full_name'].lower()
-                    if name_lower not in existing and len(entry['full_name']) > 0:
-                        cursor.execute('INSERT INTO sanctions_list (source_list, full_name, other_info, list_version_date) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
-                                       (source, entry['full_name'], entry.get('other_info', ''),))
-                        imported += 1
-                        existing.add(name_lower)
-                cursor.execute('INSERT OR REPLACE INTO list_metadata (list_name, last_updated) VALUES (?, CURRENT_TIMESTAMP)', (source,))
-                cursor.execute('INSERT OR REPLACE INTO system_metadata (key, value) VALUES (?, ?)', (f'{source}_hash', content_hash))
-            logging.info(f'Fetched and imported {imported} new unique entries from {source}')
-            flash(f'Updated {source} list with {imported} new entries!', 'success')
-        except requests.RequestException as e:
-            logging.error(f'Fetch failed for {source}: {str(e)}')
-            flash(f'Failed to update {source} list: Network error. Using cached local data.', 'warning')
-        except Exception as e:
-            logging.error(f'Parse failed for {source}: {str(e)}')
-            flash(f'Format change detected for {source} list: {str(e)}. Manual update recommended.', 'error')
+}
 
-# Parser functions (each <50 lines, with error handling)
-def parse_un_xml(data, source):
+def get_un_url():
     try:
-        root = ET.fromstring(data)
-        entries = []
-        for indiv in root.findall('.//INDIVIDUAL'):
-            first = indiv.find('FIRST_NAME').text or ''
-            second = indiv.find('SECOND_NAME').text or ''
-            name = f'{first} {second}'.strip()
-            if name:
-                other_info = indiv.find('COMMENTS1').text or ''
-                entries.append({'full_name': name, 'other_info': other_info})
-        return entries
-    except ET.ParseError as e:
-        raise ValueError("Invalid XML format for UN list") from e
-    except AttributeError:
-        raise ValueError("Unexpected XML structure change in UN list")
-
-def parse_ofac_csv(data, source):
-    try:
-        reader = csv.reader(StringIO(data))
-        entries = []
-        header = next(reader, None)
-        if not header or 'ent_num' not in header[0]:
-            raise ValueError("Missing or changed CSV header in OFAC list")
-        for row in reader:
-            if row and len(row) > 1:
-                name = row[1].strip()
-                other_info = row[-1] if len(row) > 11 else ''
-                if name:
-                    entries.append({'full_name': name, 'other_info': other_info})
-        return entries
-    except csv.Error as e:
-        raise ValueError("Invalid CSV format for OFAC list") from e
-
-def parse_uk_ods(data, source):
-    try:
-        df = pd.read_excel(BytesIO(data), engine='openpyxl' if data[0:4] == b'PK\x03\x04' else 'odf', sheet_name=0, header=1)  # Detect engine by magic bytes
-        entries = []
-        for _, row in df.iterrows():
-            name_parts = [str(row.get(f'Name {i}', '')) for i in range(1, 7)]
-            name = ' '.join(part.strip() for part in name_parts if part and part != 'nan')
-            if name:
-                other_info = str(row.get('Remarks', '')) or ''
-                entries.append({'full_name': name, 'other_info': other_info})
-        return entries
-    except ValueError as e:
-        if 'odf' in str(e) or 'openpyxl' in str(e):
-            raise ValueError("Invalid file format for UK list; try different extension") from e
-        raise ValueError("Invalid ODS/XLSX structure or tampered columns in UK list") from e
+        response = requests.get(SANCTIONS_SOURCES['UN']['base_url'], timeout=10)
+        response.raise_for_status()
+        tree = html.fromstring(response.content)
+        xml_link = tree.xpath(SANCTIONS_SOURCES['UN']['xml_path'])
+        if xml_link:
+            base = 'https://scsanctions.un.org'
+            return base + xml_link[0] if xml_link[0].startswith('/') else xml_link[0]
+        raise ValueError('No XML link found')
     except Exception as e:
-        raise ValueError("Unexpected error in UK ODS parsing") from e
+        raise RuntimeError(f'Failed to get UN URL: {str(e)}')
 
-def parse_eu_xml(data, source):
+def fetch_sanctions_list(source):
+    if source == 'UN':
+        try:
+            url = get_un_url()
+        except:
+            url = None  # Fallback to cache
+    else:
+        url = SANCTIONS_SOURCES[source].get('url')
+    
+    file_path = SANCTIONS_SOURCES[source]['file']
+    error_msg = SANCTIONS_SOURCES[source]['error_msg']
+    
+    if not url:
+        if os.path.exists(file_path):
+            return error_msg
+        raise ValueError(f'No URL or cache for {source}')
+    
     try:
-        root = ET.fromstring(data)
-        entries = []
-        for entity in root.findall('.//sanctionEntity'):
-            name_elem = entity.find('nameAlias')
-            name = name_elem.get('wholeName') if name_elem is not None else ''
-            if name:
-                other_info = entity.find('regulation/regulationSummary').text or ''
-                entries.append({'full_name': name.strip(), 'other_info': other_info})
-        return entries
-    except ET.ParseError as e:
-        raise ValueError("Invalid XML format for EU list") from e
-    except AttributeError:
-        raise ValueError("Unexpected XML structure change in EU list")
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        with open(file_path, 'wb') as f:
+            f.write(response.content)
+        return f'{source} list updated.'
+    except Exception:
+        if os.path.exists(file_path):
+            return error_msg
+        raise ValueError(f'Download failed for {source}, no cache.')
 
-def parse_canada_xml(data, source):
-    try:
-        root = ET.fromstring(data)
-        entries = []
-        for item in root.findall('.//item'):
-            name = item.find('name').text or ''
-            if name:
-                other_info = item.find('description').text or ''
-                entries.append({'full_name': name.strip(), 'other_info': other_info})
-        return entries
-    except ET.ParseError as e:
-        raise ValueError("Invalid XML format for Canada list") from e
-    except AttributeError:
-        raise ValueError("Unexpected XML structure change in Canada list")
+def parse_xml(file_path):
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f'XML file missing: {file_path}')
+    tree = html.parse(file_path)
+    sanctions = []
+    for entry in tree.xpath('//individual | //entity | //Designation | //sanctionEntity | //sdnEntry'):
+        # Handle UN/CA: FIRST_NAME + SECOND_NAME
+        first = entry.xpath('FIRST_NAME/text()') or entry.xpath('first_name/text()')
+        second = entry.xpath('SECOND_NAME/text()') or entry.xpath('second_name/text()')
+        name = ' '.join([first[0] if first else '', second[0] if second else '']).strip().lower()
+        if name:
+            sanctions.append(name)
+            continue
+        # Handle UK: Name/Name1 + Name2 + Name6
+        name1 = entry.xpath('Names/Name/Name1/text()') or entry.xpath('name/Name1/text()')
+        name2 = entry.xpath('Names/Name/Name2/text()') or entry.xpath('name/Name2/text()')
+        name6 = entry.xpath('Names/Name/Name6/text()') or entry.xpath('name/Name6/text()')
+        name = ' '.join([name1[0] if name1 else '', name2[0] if name2 else '', name6[0] if name6 else '']).strip().lower()
+        if name:
+            sanctions.append(name)
+            continue
+        # Handle EU/general: nameAlias/@wholeName or NAME
+        whole = entry.xpath('nameAlias/@wholeName') or entry.xpath('NAME/text()') or entry.xpath('name/text()')
+        name = whole[0].lower() if whole else ''
+        if name:
+            sanctions.append(name)
+            continue
+        # Handle US: firstName + lastName + akaList/aka/akaName
+        us_first = entry.xpath('firstName/text()')
+        us_last = entry.xpath('lastName/text()')
+        name = ' '.join([us_first[0] if us_first else '', us_last[0] if us_last else '']).strip().lower()
+        if name:
+            sanctions.append(name)
+        akas = entry.xpath('akaList/aka/akaName/text()')
+        sanctions.extend(aka.lower() for aka in akas if aka)
+    return [n for n in set(sanctions) if n]  # Dedup non-empty
+
+def parse_csv(file_path):
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f'CSV file missing: {file_path}')
+    with open(file_path, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        return [row[2].lower() for row in reader if len(row) > 2]
+
+def parse_json(file_path):
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f'JSON file missing: {file_path}')
+    with open(file_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        return [entry['name'].lower() for entry in data.get('sanctions', []) if 'name' in entry]
+
+def load_all_sanctions():
+    all_sanctions = []
+    for source, info in SANCTIONS_SOURCES.items():
+        file_path = info['file']
+        try:
+            if file_path.endswith('.xml'):
+                all_sanctions.extend(parse_xml(file_path))
+            elif file_path.endswith('.csv'):
+                all_sanctions.extend(parse_csv(file_path))
+            elif file_path.endswith('.json'):
+                all_sanctions.extend(parse_json(file_path))
+        except Exception as e:
+            app.logger.error(f'Skipping {source} due to parse error: {str(e)}')
+    return list(set(all_sanctions))  # Dedup
+
+SANCTIONS_LIST = load_all_sanctions()
+
+def token_sort_similarity(name1, name2):
+    tokens1 = sorted(name1.split())
+    tokens2 = sorted(name2.split())
+    return difflib.SequenceMatcher(None, ' '.join(tokens1), ' '.join(tokens2)).ratio() * 100
 
 @app.route('/')
-@app.route('/index')
-@login_required
 def index():
-    # Fetch dashboard data
-    with db.get_cursor() as cursor:
-        cursor.execute('SELECT COUNT(*) FROM clients')
-        total_clients = cursor.fetchone()[0]
-        cursor.execute('SELECT COUNT(*) FROM clients WHERE risk_score > 0')
-        flagged_cases = cursor.fetchone()[0]
-        cursor.execute('SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 10')
-        recent_logs = cursor.fetchall()
-        cursor.execute('SELECT * FROM list_metadata')
-        list_status = cursor.fetchall()
-    return render_template('dashboard.html', total_clients=total_clients, flagged_cases=flagged_cases, recent_logs=recent_logs, list_status=list_status)
+    return render_template('index.html')
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        password = request.form.get('password')
-        if auth_system.verify_password(password):
-            session['authenticated'] = True
-            flash('Login successful!', 'success')
-            return redirect(url_for('index'))
-        else:
-            flash('Invalid password. Please try again.', 'error')
-    return render_template('login.html')
+@app.route('/update_lists', methods=['POST'])
+def update_lists():
+    messages = []
+    for source in SANCTIONS_SOURCES:
+        try:
+            messages.append(fetch_sanctions_list(source))
+        except ValueError as e:
+            messages.append(str(e))
+    global SANCTIONS_LIST
+    SANCTIONS_LIST = load_all_sanctions()
+    return jsonify({'messages': messages})
 
-@app.route('/setup_password', methods=['GET', 'POST'])
-def setup_password():
-    if auth_system.is_password_set():
-        return redirect(url_for('login'))
-    if request.method == 'POST':
-        password = request.form.get('password')
-        confirm = request.form.get('confirm_password')
-        if password == confirm and len(password) >= 8:
-            auth_system.setup_master_password(password)
-            session['authenticated'] = True
-            flash('Password set successfully!', 'success')
-            return redirect(url_for('index'))
-        else:
-            flash('Passwords do not match or too short.', 'error')
-    return render_template('setup_password.html')
+@app.route('/check_sanctions', methods=['POST'])
+def check_sanctions():
+    data = request.json
+    name = data.get('name', '').strip().lower()
+    if not name or not isinstance(name, str):
+        return jsonify({'error': 'Valid name required'}), 400
+    candidates = difflib.get_close_matches(name, SANCTIONS_LIST, n=10, cutoff=0.6)
+    results = [cand for cand in candidates if token_sort_similarity(name, cand) > 80]
+    return jsonify({'matches': results})
 
-@app.route('/clients', methods=['GET', 'POST'])
-@login_required
-def clients():
-    if request.method == 'POST':
-        full_name = sanitize_input(request.form.get('full_name'))
-        id_number = sanitize_input(request.form.get('id_number'))
-        date_of_birth = sanitize_input(request.form.get('date_of_birth'))
-        address = sanitize_input(request.form.get('address'))
-        if full_name:
-            with db.get_cursor() as cursor:
-                cursor.execute('INSERT INTO clients (full_name, id_number, date_of_birth, address) VALUES (?, ?, ?, ?)',
-                               (full_name, id_number, date_of_birth, address))
-                client_id = cursor.lastrowid
-                cursor.execute('INSERT INTO audit_log (user_action, client_id, details) VALUES (?, ?, ?)',
-                               ('Client Created', client_id, f'Added client {full_name}'))
-            flash('Client added successfully!', 'success')
-        else:
-            flash('Full name is required.', 'error')
-    with db.get_cursor() as cursor:
-        cursor.execute('SELECT * FROM clients ORDER BY created_at DESC')
-        clients = cursor.fetchall()
-    return render_template('clients.html', clients=clients)
-
-@app.route('/delete_client/<int:client_id>', methods=['POST'])
-@login_required
-def delete_client(client_id):
-    with db.get_cursor() as cursor:
-        cursor.execute('DELETE FROM clients WHERE id = ?', (client_id,))
-        cursor.execute('INSERT INTO audit_log (user_action, client_id, details) VALUES (?, ?, ?)',
-                       ('Client Deleted', client_id, f'Deleted client ID {client_id}'))
-    flash('Client deleted successfully!', 'success')
-    return redirect(url_for('clients'))
-
-@app.route('/check_sanctions/<int:client_id>')
-@login_required
-def check_sanctions(client_id):
-    with db.get_cursor() as cursor:
-        cursor.execute('SELECT full_name FROM clients WHERE id = ?', (client_id,))
-        client = cursor.fetchone()
-        if not client:
-            return jsonify({'error': 'Client not found'}), 404
-        client_name = client[0]
-        cursor.execute('SELECT full_name, source_list, other_info FROM sanctions_list')
-        sanctions = cursor.fetchall()
-        matches = []
-        for s in sanctions:
-            if fuzz.ratio(client_name.lower(), s[0].lower()) > 80:
-                matches.append({'full_name': s[0], 'source_list': s[1], 'other_info': s[2]})
-        risk_score = len(matches)
-        cursor.execute('UPDATE clients SET risk_score = ? WHERE id = ?', (risk_score, client_id))
-        cursor.execute('INSERT INTO audit_log (user_action, client_id, details) VALUES (?, ?, ?)',
-                       ('Sanctions Check', client_id, f'Found {risk_score} matches for {client_name}'))
-    return jsonify({'matches_found': risk_score, 'matches': matches, 'client_id': client_id})
-
-@app.route('/sanctions_lists', methods=['GET', 'POST'])
-@login_required
+@app.route('/sanctions_lists')
 def sanctions_lists():
-    if request.method == 'POST' and request.form.get('action') == 'refresh':
-        auto_fetch_sanctions_lists()
-        return redirect(url_for('sanctions_lists'))
-    with db.get_cursor() as cursor:
-        cursor.execute('SELECT list_name, last_updated, (SELECT COUNT(*) FROM sanctions_list WHERE source_list = list_name) AS count FROM list_metadata')
-        lists = cursor.fetchall()
-    return render_template('sanctions_lists.html', lists=lists)
+    return render_template('sanctions-lists.html')
 
 @app.route('/import_consolidated', methods=['POST'])
-@login_required
 def import_consolidated():
     files = request.files.getlist('files')
-    imported = 0
+    if not files:
+        flash('No files selected', 'error')
+        return jsonify({'error': 'No files'}), 400
+    imported = []
     for file in files:
-        if file.filename:
-            try:
-                source = file.filename.split('.')[0].upper()
-                data = file.read()
-                if file.filename.endswith('.xml'):
-                    entries = parse_un_xml(data, source) if 'UN' in source else parse_eu_xml(data, source) if 'EU' in source else parse_canada_xml(data, source) if 'CANADA' in source else []
-                elif file.filename.endswith('.csv'):
-                    entries = parse_ofac_csv(data.decode('utf-8'), source)
-                elif file.filename.endswith(('.ods', '.xlsx')):
-                    entries = parse_uk_ods(data, source)
-                else:
-                    raise ValueError("Unsupported file format")
-                with db.get_cursor() as cursor:
-                    cursor.execute('DELETE FROM sanctions_list WHERE source_list = ?', (source,))
-                    existing = set(row[0].lower() for row in cursor.execute('SELECT full_name FROM sanctions_list').fetchall())
-                    for entry in entries:
-                        name_lower = entry['full_name'].lower()
-                        if name_lower not in existing and len(entry['full_name']) > 0:
-                            cursor.execute('INSERT INTO sanctions_list (source_list, full_name, other_info, list_version_date) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
-                                           (source, entry['full_name'], entry.get('other_info', ''),))
-                            imported += 1
-                            existing.add(name_lower)
-                    cursor.execute('INSERT OR REPLACE INTO list_metadata (list_name, last_updated) VALUES (?, CURRENT_TIMESTAMP)', (source,))
-                file.seek(0)
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], file.filename))
-            except Exception as e:
-                logging.error(f'Import failed for {file.filename}: {str(e)}')
-                flash(f'Error importing {file.filename}: {str(e)}. Format may have changed.', 'error')
-    flash(f'Imported {imported} new unique entries from consolidated lists!', 'success')
+        if not file.filename or not file.filename.lower().endswith(
+                ('.xml', '.csv', '.ods', '.xlsx')):
+            flash(f'Invalid file: {file.filename}', 'error')
+            continue
+        try:
+            if file.filename.endswith('.xml'):
+                content = file.read().decode('utf-8')
+                tree = html.fromstring(content)
+                names = parse_xml(tree)  # Reuse parse_xml logic
+            elif file.filename.endswith('.csv'):
+                content = file.read().decode('utf-8')
+                reader = csv.reader(content.splitlines())
+                names = [row[2].lower() for row in reader if len(row) > 2]
+            else:  # ODS/XLSX
+                df = pd.read_excel(file, engine='openpyxl' if file.filename.endswith('.xlsx') else 'odf')
+                col = 'name' if 'name' in df.columns else df.columns[0]
+                names = df[col].dropna().str.lower().tolist()
+            global SANCTIONS_LIST
+            SANCTIONS_LIST.extend(names)
+            SANCTIONS_LIST = list(set(SANCTIONS_LIST))  # Dedup
+            imported.append(file.filename)
+            app.logger.info(f'Uploaded {file.filename} with {len(names)} names')
+        except Exception as e:
+            flash(f'Error importing {file.filename}: {str(e)}', 'error')
+    if imported:
+        flash(f'Imported: {", ".join(imported)}', 'success')
     return redirect(url_for('sanctions_lists'))
 
-@app.route('/reports')
-@login_required
-def reports():
-    with db.get_cursor() as cursor:
-        cursor.execute('SELECT * FROM clients ORDER BY created_at DESC')
-        clients = cursor.fetchall()
-        cursor.execute('SELECT * FROM list_metadata')
-        list_status = cursor.fetchall()
-        cursor.execute('SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 20')
-        audit_logs = cursor.fetchall()
-    return render_template('reports.html', clients=clients, list_status=list_status, audit_logs=audit_logs)
-
-@app.route('/generate_report/<int:client_id>')
-@login_required
-def generate_report(client_id):
+@app.route('/export_sanctions')
+def export_sanctions():
+    fmt = request.args.get('format', 'csv').strip().lower()
+    if fmt not in ('csv', 'json', 'xml'):
+        return jsonify({'error': 'Invalid format (csv/json/xml)'}), 400
+    if not SANCTIONS_LIST:
+        return jsonify({'error': 'No sanctions to export'}), 400
     try:
-        with db.get_cursor() as cursor:
-            cursor.execute('SELECT * FROM clients WHERE id = ?', (client_id,))
-            client_info = cursor.fetchone()
-            if not client_info:
-                flash('Client not found', 'error')
-                return redirect(url_for('reports'))
-            
-            cursor.execute('SELECT full_name, source_list, other_info FROM sanctions_list WHERE LOWER(full_name) LIKE ?', (f'%{client_info["full_name"].lower()}%',))
-            matches = cursor.fetchall()
-            cursor.execute('SELECT list_name, last_updated FROM list_metadata')
-            lists_used = cursor.fetchall()
-            
-            report_data = {
-                'report_id': f'R-{client_id}-{datetime.now().strftime("%Y%m%d")}',
-                'screening_date': datetime.now().isoformat(),
-                'client_info': client_info,
-                'risk_assessment': 'Low' if client_info['risk_score'] == 0 else 'High',
-                'matches': matches,
-                'sanctions_lists_used': lists_used,
-                'sha256_hash': hashlib.sha256(json.dumps(client_info).encode()).hexdigest()  # Improved hash
-            }
-            cursor.execute('INSERT INTO audit_log (user_action, client_id, details) VALUES (?, ?, ?)',
-                           ('Report Generated', client_id, f'Generated report with hash: {report_data["sha256_hash"][:16]}...'))
-        
-        org_name = session.get('org_name', 'MkweliAML')
-        
-        if WEASYPRINT_AVAILABLE:
-            pdf_html = render_template('report_template.html', report=report_data, org_name=org_name)
-            pdf_file = HTML(string=pdf_html).write_pdf()
-            response = make_response(pdf_file)
-            response.headers['Content-Type'] = 'application/pdf'
-            response.headers['Content-Disposition'] = f'attachment; filename=MkweliAML_Report_{client_id}_{datetime.now().strftime("%Y%m%d")}.pdf'
-            return response
-        else:
-            return render_template('report_template.html', report=report_data, org_name=org_name)
+        if fmt == 'csv':
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(['name'])
+            writer.writerows([[name] for name in SANCTIONS_LIST])
+            resp = make_response(output.getvalue())
+            resp.headers['Content-Type'] = 'text/csv'
+            resp.headers['Content-Disposition'] = 'attachment; filename=sanctions.csv'
+        elif fmt == 'json':
+            resp = make_response(json.dumps({'sanctions': SANCTIONS_LIST}))
+            resp.headers['Content-Type'] = 'application/json'
+            resp.headers['Content-Disposition'] = 'attachment; filename=sanctions.json'
+        else:  # xml
+            xml_content = '<sanctions>' + ''.join(f'<name>{name}</name>' for name in SANCTIONS_LIST) + '</sanctions>'
+            resp = make_response(xml_content)
+            resp.headers['Content-Type'] = 'application/xml'
+            resp.headers['Content-Disposition'] = 'attachment; filename=sanctions.xml'
+        return resp
     except Exception as e:
-        logging.error(f'Error generating report for client {client_id}: {str(e)}')
-        flash(f'Error generating report: {str(e)}', 'error')
-        return redirect(url_for('reports'))
+        return jsonify({'error': f'Export failed: {str(e)}'}), 500
 
-@app.route('/help')
-@login_required
-def help():
-    org_name = session.get('org_name', 'MkweliAML - Created by Gilbert Clement Bouic')
-    return render_template('help.html', org_name=org_name)
+# For future auth: Use JWT or session-based; no logic yet.
 
-@app.route('/settings', methods=['GET', 'POST'])
-@login_required
-def settings():
-    if request.method == 'POST':
-        org_name = sanitize_input(request.form.get('org_name'))
-        if org_name:
-            session['org_name'] = org_name
-            flash('Organization name updated successfully!', 'success')
-        else:
-            flash('Please enter a valid organization name.', 'error')
-    org_name = session.get('org_name', 'MkweliAML - Created by Gilbert Clement Bouic')
-    return render_template('settings.html', org_name=org_name)
+class TestSanctionsFunctions(unittest.TestCase):
+    def test_get_un_success(self):
+        class MockResponse:
+            status_code = 200
+            content = b'<html><a href="/resources/xml/en/consolidated.xml?token=abc123">XML</a></html>'
+        original_get = requests.get
+        requests.get = lambda url, **kw: MockResponse()
+        url = get_un_url()
+        self.assertIn('?token=abc123', url)
+        requests.get = original_get
 
-@app.route('/clear_all_clients')
-@login_required
-def clear_all_clients():
-    with db.get_cursor() as cursor:
-        cursor.execute('SELECT COUNT(*) FROM clients')
-        client_count = cursor.fetchone()[0]
-        cursor.execute('DELETE FROM clients')
-        cursor.execute('DELETE FROM sqlite_sequence WHERE name="clients"')
-        cursor.execute('INSERT INTO audit_log (user_action, details) VALUES (?, ?)',
-                      ('System Action', f'All {client_count} clients deleted by user'))
-    flash(f'All {client_count} clients have been deleted successfully!', 'success')
-    return redirect(url_for('clients'))
+    def test_get_un_failure(self):
+        class MockResponse:
+            status_code = 200
+            content = b'<html></html>'
+        original_get = requests.get
+        requests.get = lambda url, **kw: MockResponse()
+        with self.assertRaises(ValueError):
+            get_un_url()
+        requests.get = original_get
 
-@app.route('/clear_all_activity')
-@login_required
-def clear_all_activity():
-    with db.get_cursor() as cursor:
-        cursor.execute('DELETE FROM audit_log')
-        cursor.execute('INSERT INTO audit_log (user_action, details) VALUES (?, ?)',
-                      ('System Action', 'All activity logs cleared by user'))
-    flash('All activity logs have been cleared successfully!', 'success')
-    return redirect(url_for('index'))
+    def test_fetch_list_success(self):
+        class MockResponse:
+            status_code = 200
+            content = b'<xml></xml>'
+        original_get = requests.get
+        requests.get = lambda url, **kw: MockResponse()
+        result = fetch_sanctions_list('CA')
+        self.assertEqual(result, 'CA list updated.')
+        requests.get = original_get
+        os.remove(SANCTIONS_SOURCES['CA']['file'])
+
+    def test_fetch_list_failure_cache(self):
+        file_path = SANCTIONS_SOURCES['CA']['file']
+        with open(file_path, 'w') as f:
+            f.write('<xml></xml>')
+        class MockResponse:
+            status_code = 500
+        original_get = requests.get
+        requests.get = lambda url, **kw: MockResponse()
+        result = fetch_sanctions_list('CA')
+        self.assertEqual(result, 'Network error on CA: Using cache')
+        requests.get = original_get
+        os.remove(file_path)
+
+    def test_parse_xml_un(self):
+        content = '<root><individual><FIRST_NAME>Eric</FIRST_NAME><SECOND_NAME>Badege</SECOND_NAME></individual></root>'
+        file_path = 'test_un.xml'
+        with open(file_path, 'w') as f:
+            f.write(content)
+        sanctions = parse_xml(file_path)
+        self.assertIn('eric badege', sanctions)
+        os.remove(file_path)
+
+    def test_parse_xml_uk(self):
+        content = '<Designations><Designation><Names><Name><Name1>Muhammad</Name1><Name2>Ali</Name2><Name6>Al-Qadari</Name6></Name></Names></Designation></Designations>'
+        file_path = 'test_uk.xml'
+        with open(file_path, 'w') as f:
+            f.write(content)
+        sanctions = parse_xml(file_path)
+        self.assertIn('muhammad ali al-qadari', sanctions)
+        os.remove(file_path)
+
+    def test_parse_xml_eu(self):
+        content = '<export><sanctionEntity><nameAlias wholeName="Saddam Hussein Al-Tikriti" /></sanctionEntity></export>'
+        file_path = 'test_eu.xml'
+        with open(file_path, 'w') as f:
+            f.write(content)
+        sanctions = parse_xml(file_path)
+        self.assertIn('saddam hussein al-tikriti', sanctions)
+        os.remove(file_path)
+
+    def test_parse_xml_us(self):
+        content = '<sdnList><sdnEntry><firstName>Abu</firstName><lastName>Abbas</lastName><akaList><aka><akaName>Abu Ali</akaName></aka></akaList></sdnEntry></sdnList>'
+        file_path = 'test_us.xml'
+        with open(file_path, 'w') as f:
+            f.write(content)
+        sanctions = parse_xml(file_path)
+        self.assertIn('abu abbas', sanctions)
+        self.assertIn('abu ali', sanctions)
+        os.remove(file_path)
+
+    def test_parse_xml_ca(self):
+        content = '<CONSOLIDATED_LIST><INDIVIDUALS><INDIVIDUAL><FIRST_NAME>Irina</FIRST_NAME><SECOND_NAME>Anatolievna</SECOND_NAME><THIRD_NAME>Kostenko</THIRD_NAME></INDIVIDUAL></INDIVIDUALS></CONSOLIDATED_LIST>'
+        file_path = 'test_ca.xml'
+        with open(file_path, 'w') as f:
+            f.write(content)
+        sanctions = parse_xml(file_path)
+        self.assertIn('irina anatolievna', sanctions)  # Adjust if THIRD_NAME needed
+        os.remove(file_path)
+
+    def test_parse_xml_missing_file(self):
+        with self.assertRaises(FileNotFoundError):
+            parse_xml('nonexistent.xml')
+
+    def test_parse_xml_empty_names(self):
+        content = '<root><individual></individual></root>'
+        file_path = 'test_empty.xml'
+        with open(file_path, 'w') as f:
+            f.write(content)
+        sanctions = parse_xml(file_path)
+        self.assertEqual(sanctions, [])
+        os.remove(file_path)
+
+    def test_token_sort_exact(self):
+        score = token_sort_similarity('eric badege', 'Eric Badege')
+        self.assertGreater(score, 80)
+
+    def test_token_sort_partial(self):
+        score = token_sort_similarity('frank bwambale', 'frank kakolele bwambale')
+        self.assertGreater(score, 80)
+
+    def test_check_sanctions_partial(self):
+        global SANCTIONS_LIST
+        SANCTIONS_LIST = ['eric badege', 'frank kakolele bwambale']
+        response = app.test_client().post('/check_sanctions', json={'name': 'Eric Badege'})
+        data = json.loads(response.data)
+        self.assertIn('eric badege', data['matches'])
+
+    def test_check_sanctions_no_name(self):
+        response = app.test_client().post('/check_sanctions', json={})
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.data)
+        self.assertIn('Valid name required', data['error'])
+
+    def test_check_sanctions_invalid_type(self):
+        response = app.test_client().post('/check_sanctions', json={'name': 123})
+        self.assertEqual(response.status_code, 400)
+
+    def test_import_xml_valid(self):
+        global SANCTIONS_LIST
+        original_list = SANCTIONS_LIST.copy()
+        bio = io.BytesIO(b'<root><individual><FIRST_NAME>Test</FIRST_NAME></individual></root>')
+        response = app.test_client().post('/import_consolidated', data={'files': (bio, 'test.xml')})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('test', SANCTIONS_LIST)
+        SANCTIONS_LIST = original_list
+
+    def test_import_csv_valid(self):
+        global SANCTIONS_LIST
+        original_list = SANCTIONS_LIST.copy()
+        csv_content = b'id,schema,name\n1,Person,test name'
+        bio = io.BytesIO(csv_content)
+        response = app.test_client().post('/import_consolidated', data={'files': (bio, 'test.csv')})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('test name', SANCTIONS_LIST)
+        SANCTIONS_LIST = original_list
+
+    def test_import_xlsx_valid(self):
+        global SANCTIONS_LIST
+        original_list = SANCTIONS_LIST.copy()
+        df = pd.DataFrame({'name': ['test xlsx']})
+        bio = io.BytesIO()
+        df.to_excel(bio, index=False)
+        bio.seek(0)
+        response = app.test_client().post('/import_consolidated', data={'files': (bio, 'test.xlsx')})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('test xlsx', SANCTIONS_LIST)
+        SANCTIONS_LIST = original_list
+
+    def test_import_invalid_ext(self):
+        bio = io.BytesIO(b'test')
+        response = app.test_client().post('/import_consolidated', data={'files': (bio, 'invalid.txt')})
+        self.assertEqual(response.status_code, 302)
+
+    def test_import_empty_file(self):
+        bio = io.BytesIO(b'')
+        response = app.test_client().post('/import_consolidated', data={'files': (bio, 'empty.xml')})
+        self.assertEqual(response.status_code, 302)
+
+    def test_import_no_files(self):
+        response = app.test_client().post('/import_consolidated')
+        self.assertEqual(response.status_code, 400)
+
+    def test_export_csv_success(self):
+        global SANCTIONS_LIST
+        SANCTIONS_LIST = ['test']
+        response = app.test_client().get('/export_sanctions?format=csv')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'name\ntest\n', response.data)
+
+    def test_export_json_success(self):
+        global SANCTIONS_LIST
+        SANCTIONS_LIST = ['test']
+        response = app.test_client().get('/export_sanctions?format=json')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'{"sanctions": ["test"]}', response.data)
+
+    def test_export_xml_success(self):
+        global SANCTIONS_LIST
+        SANCTIONS_LIST = ['test']
+        response = app.test_client().get('/export_sanctions?format=xml')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'<sanctions><name>test</name></sanctions>', response.data)
+
+    def test_export_invalid_format(self):
+        response = app.test_client().get('/export_sanctions?format=invalid')
+        self.assertEqual(response.status_code, 400)
+
+    def test_export_empty_list(self):
+        global SANCTIONS_LIST
+        SANCTIONS_LIST = []
+        response = app.test_client().get('/export_sanctions')
+        self.assertEqual(response.status_code, 400)
 
 if __name__ == '__main__':
-    print("Starting MkweliAML AML & KYC Sanctions Compliance")
-    print("System URL: http://localhost:5000")
-    if not WEASYPRINT_AVAILABLE:
-        print("Note: PDF generation disabled. HTML reports available.")
-    app.run(debug=app.config['DEBUG'], host='0.0.0.0', port=5000)
+    unittest.main()
