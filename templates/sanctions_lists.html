@@ -4,22 +4,24 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Sanctions Lists Management</h1>
     <form method="POST">
-        <button type="submit" name="action" value="refresh" class="btn btn-primary">Refresh Lists</button>
+        <button type="submit" name="action" value="refresh" class="btn btn-primary me-2">Refresh Lists</button>
+        <button type="submit" name="action" value="clear" class="btn btn-danger" onclick="return confirm('Clear all lists?')">Clear Lists</button>
     </form>
 </div>
 
 <div class="row">
-    <!-- Consolidated Import -->
+    <!-- Sanctions Upload Feature -->
     <div class="col-md-6 mb-4">
         <div class="card">
             <div class="card-header">
-                <h5>Import Consolidated List</h5>
+                <h5>Upload Sanctions Files</h5>
             </div>
             <div class="card-body">
-                <p>Upload files (XML, CSV, ODS, XLSX) for manual import as fallback. Auto-fetch runs on startup from official free sources.</p>
+                <p>Upload XML, CSV, ODS, or XLSX files to add names manually.</p>
                 <form method="POST" action="{{ url_for('import_consolidated') }}" enctype="multipart/form-data">
-                    <input type="file" name="files" multiple required class="form-control mb-3">
-                    <button type="submit" class="btn btn-success w-100">Import Consolidated</button>
+                    <label for="files" class="form-label">Select files:</label>
+                    <input type="file" name="files" id="files" multiple required class="form-control mb-3">
+                    <button type="submit" class="btn btn-success w-100">Upload</button>
                 </form>
             </div>
         </div>
@@ -29,7 +31,7 @@
     <div class="col-md-6 mb-4">
         <div class="card">
             <div class="card-header">
-                <h5>Current Sanctions Lists</h5>
+                <h5>Current Lists</h5>
             </div>
             <div class="card-body">
                 {% if lists %}
@@ -54,7 +56,7 @@
                     </table>
                 </div>
                 {% else %}
-                <p class="text-muted">No lists loaded yet. Click Refresh Lists.</p>
+                <p class="text-muted">No lists loaded. Refresh or upload.</p>
                 {% endif %}
             </div>
         </div>
