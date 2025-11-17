@@ -185,9 +185,10 @@ def check_sanctions():
     results = [cand for cand in candidates if token_sort_similarity(name, cand) > 80]
     return jsonify({'matches': results})
 
-@app.route('/sanctions_lists')
+@app.route('/sanctions-lists')
 def sanctions_lists():
-    return render_template('sanctions-lists.html')
+    lists = [{'list_name': source, 'count': 0, 'last_updated': 'N/A'} for source in SANCTIONS_SOURCES]  # Dummy; expand
+    return render_template('sanctions-lists.html', lists=lists)
 
 @app.route('/import_consolidated', methods=['POST'])
 def import_consolidated():
