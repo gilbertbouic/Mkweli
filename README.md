@@ -13,7 +13,6 @@ Features: Auth (login), client wizard (add/check), PDF reports (gen/view), sanct
 Git: Branch/PR for changes.
 
 Troubleshoot: Logs for errors, test with unittest.
-=======
 # MkweliAML - Simple AML/KYC Tool
 
 MkweliAML helps check clients against sanctions lists. It runs on your computer.

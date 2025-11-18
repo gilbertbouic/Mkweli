@@ -14,7 +14,6 @@ def init_database():
             print("DB initialized.")  # Feedback
     except Exception as e:
         print(f"Error: {str(e)}")  # User-friendly
-=======
 import sqlite3
 import os
 

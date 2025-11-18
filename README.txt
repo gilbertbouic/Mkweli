@@ -13,7 +13,6 @@ Overview:
 Requirements: See requirements.txt (no extras needed).
 
 For format changes: Manual upload or update parsers in app.py.
-=======
 MkweliAML - Local Anti-Money Laundering Compliance Tool
 
 MkweliAML is a simple, offline tool for KYC client screening against sanctions lists. It runs on your local machine with no internet required after setup. Designed for small teams in budget-constrained environments.
