@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><title>MkweliAML</title></head>
+<body>
+<nav aria-label="Main navigation">
+  <a href="{{ url_for('main.index') }}">Home</a> |
+  <a href="{{ url_for('main.sanctions_lists') }}">Sanctions</a> |
+  <!-- Add Clients/Reports/Settings/Help -->
+</nav>
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <ul>
+      {% for category, msg in messages %}
+        <li class="{{ category }}">{{ msg }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+{% block content %}{% endblock %}
+</body>
+</html>

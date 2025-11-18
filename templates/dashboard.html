@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h1>Dashboard Overview</h1>
+        <p class="text-muted">Welcome to MkweliAML - Your anti-money laundering compliance dashboard.</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('sanctions_lists') }}" class="btn btn-primary">Configure Lists</a>
+        <a href="{{ url_for('clear_all_activity') }}" class="btn btn-danger" 
+           onclick="return confirm('Are you sure you want to clear all activity logs? This action cannot be undone.')">
+            Clear All Activity
+        </a>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- Statistics Cards -->
+    <div class="col-md-4 mb-4">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h5 class="card-title">Total Clients</h5>
+                <h2 class="card-text">{{ total_clients }}</h2>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h5 class="card-title">Flagged Cases</h5>
+                <h2 class="card-text">{{ flagged_cases }}</h2>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h5 class="card-title">Actions Needed</h5>
+                <h2 class="card-text">{{ flagged_cases }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- Sanctions Lists Status -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Sanctions Lists Status</h5>
+            </div>
+            <div class="card-body">
+                {% if list_status %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>List Name</th>
+                                    <th>Last Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for list in list_status %}
+                                <tr>
+                                    <td>{{ list['list_name'] }}</td>
+                                    <td>
+                                        {% if list['last_updated'] %}
+                                            {{ list['last_updated'][:10] }}
+                                        {% else %}
+                                            <span class="text-danger">Never</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No sanctions lists configured yet.</p>
+                    <a href="{{ url_for('sanctions_lists') }}" class="btn btn-sm btn-primary">Configure Lists</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Recent Activity</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_logs %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Action</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in recent_logs %}
+                                <tr>
+                                    <td>{{ log['timestamp'][:16] }}</td>
+                                    <td>{{ log['user_action'] }}</td>
+                                    <td>{{ log['details'] }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No recent activity.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
