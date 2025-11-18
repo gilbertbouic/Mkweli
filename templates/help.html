@@ -1,9 +1,27 @@
 {% extends "base.html" %}
 
 {% block content %}
+<<<<<<< HEAD
 <h1>Help</h1>
 <p>Use home to check names.</p>
 <p>Sanctions-lists: Refresh/upload lists.</p>
 <p>Clients: Add with wizard.</p>
 <p>Reports: View/PDF.</p>
+=======
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Help & Documentation</h1>
+</div>
+
+<p>Welcome to MkweliAML Help. This open-source tool for low-budget users relies on free official sanctions sources (UN, OFAC, UK, EU, Canada). Data is auto-fetched on startup and stored locally in the database—no cloud dependency, reducing manipulation risks. Manual uploads are available as fallback.</p>
+
+<ul>
+    <li><strong>Dashboard</strong>: Overview of clients, flagged cases, and activity. Lists show update dates from local DB.</li>
+    <li><strong>Client Management</strong>: Add clients, check against sanctions (fuzzy match >80%), delete. Risk scores update automatically.</li>
+    <li><strong>Sanctions Lists</strong>: Auto-updates from free sources. Click "Refresh Lists" for manual trigger. View counts and dates. If format changes, errors are logged in logs/app.log—use manual import.</li>
+    <li><strong>Reports</strong>: Generate PDF/HTML with client details, matches, lists used, and SHA-256 hash for integrity.</li>
+    <li><strong>Settings</strong>: Customize organization name for reports.</li>
+    <li><strong>Offline Use</strong>: Assumes internet for initial fetches; retains local data thereafter. Disable auto-fetch in app.py for fully offline.</li>
+    <li><strong>Troubleshooting</strong>: Check logs/app.log for errors. Duplicates are prevented via checks; DB remains lean.</li>
+</ul>
+>>>>>>> 4bfb9585fdcb6db813b32955452182091acac196
 {% endblock %}

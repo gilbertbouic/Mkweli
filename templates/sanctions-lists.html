@@ -17,7 +17,11 @@
                 <h5>Upload Sanctions Files</h5>
             </div>
             <div class="card-body">
+<<<<<<< HEAD
                 <p>Upload XML, CSV, ODS, or XLSX files to add names manually. Hint: Use for backups or custom lists.</p>
+=======
+                <p>Upload XML, CSV, ODS, or XLSX files to add names manually.</p>
+>>>>>>> 4bfb9585fdcb6db813b32955452182091acac196
                 <form method="POST" action="{{ url_for('import_consolidated') }}" enctype="multipart/form-data">
                     <label for="files" class="form-label">Select files:</label>
                     <input type="file" name="files" id="files" multiple required class="form-control mb-3">
@@ -34,7 +38,10 @@
                 <h5>Current Lists</h5>
             </div>
             <div class="card-body">
+<<<<<<< HEAD
                 <p>Hint: Refresh to update from sources. Clear to reset.</p>
+=======
+>>>>>>> 4bfb9585fdcb6db813b32955452182091acac196
                 {% if lists %}
                 <div class="table-responsive">
                     <table class="table table-striped">
