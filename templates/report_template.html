@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Report for {{ client.name }}</h1>
+<p>Date: {{ client.check_date }}</p>
+<h2>Matches</h2>
+<ul>
+    {% for match in matches %}
+    <li>{{ match }}</li>
+    {% endfor %}
+</ul>
+<a href="{{ url_for('report_pdf', client_id=client.id) }}" class="btn btn-primary">Download PDF</a>
+{% endblock %}

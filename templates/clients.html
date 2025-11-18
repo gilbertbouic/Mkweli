@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Clients</h1>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Date</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for client in clients %}
+        <tr>
+            <td>{{ client.name }}</td>
+            <td>{{ client.check_date }}</td>
+            <td><a href="{{ url_for('report', client_id=client.id) }}">View Report</a> | <a href="{{ url_for('report_pdf', client_id=client.id) }}">PDF</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('wizard_client') }}" class="btn btn-primary">Add Client</a>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h1 class="text-center mb-4">MkweliAML Name Checker</h1>
+        <p class="text-center mb-4">Enter a name to check against sanctions lists.</p>
+        <form id="checkForm" class="mb-4">
+            <div class="input-group">
+                <input type="text" id="nameInput" class="form-control" placeholder="Enter name..." required>
+                <button type="submit" class="btn btn-primary">Check</button>
+            </div>
+        </form>
+        <div id="results" class="card" style="display: none;">
+            <div class="card-body">
+                <h5>Matches:</h5>
+                <ul id="matchList" class="list-group"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('checkForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const name = document.getElementById('nameInput').value.trim();
+        if (!name) return;
+
+        fetch('/check_sanctions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const resultsDiv = document.getElementById('results');
+            const matchList = document.getElementById('matchList');
+            matchList.innerHTML = '';
+            if (data.matches && data.matches.length > 0) {
+                data.matches.forEach(match => {
+                    const li = document.createElement('li');
+                    li.classList.add('list-group-item');
+                    li.textContent = match;
+                    matchList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.classList.add('list-group-item', 'text-muted');
+                li.textContent = 'No matches found.';
+                matchList.appendChild(li);
+            }
+            resultsDiv.style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Check failed—try again.');
+        });
+    });
+</script>
+{% endblock %}
