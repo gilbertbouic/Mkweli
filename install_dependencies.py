@@ -3,7 +3,6 @@
 MkweliAML Dependency Installer
 <<<<<<< HEAD
 Run this script to install all required dependencies
-=======
 Run this script to install all required dependencies in a virtual environment.
 >>>>>>> 4bfb9585fdcb6db813b32955452182091acac196
 """
@@ -16,7 +15,6 @@ import os
 def run_command(command):
     try:
         print(f"Running: {command}")
-=======
 import venv
 
 def run_command(command, venv_python=None):
@@ -39,7 +37,6 @@ def main():
     print("=" * 40)
     
 <<<<<<< HEAD
-=======
     # Check Python version
 >>>>>>> 4bfb9585fdcb6db813b32955452182091acac196
     if sys.version_info < (3, 8):
@@ -50,7 +47,6 @@ def main():
     dependencies = [
         "pip install Flask==2.3.3",
         "pip install Werkzeug==2.3.7", 
-=======
     # Create virtual environment if not exists
     venv_dir = os.path.join(os.path.dirname(__file__), 'venv')
     if not os.path.exists(venv_dir):
@@ -88,7 +84,6 @@ def main():
     
     print("\nAll dependencies installed successfully!")
     print("\nNext: Run python init_db.py, then python app.py")
-=======
         "pip install bcrypt==4.1.3"
     ]
     
