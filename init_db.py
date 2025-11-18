@@ -19,15 +19,15 @@ def init_database():
         )
     ''')
 
-    # 2. Table for storing sanctions lists - Added UNIQUE on (source_list, full_name) for dedup
+    # 2. Table for storing sanctions lists
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS sanctions_list (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            source_list TEXT NOT NULL,
+            source_list TEXT NOT NULL, -- e.g., 'OFAC', 'UN'
+            original_id TEXT, -- The ID from the original list
             full_name TEXT NOT NULL,
-            other_info TEXT,
-            list_version_date TEXT,
-            UNIQUE (source_list, full_name)
+            other_info TEXT, -- Could include address, type of sanction, etc.
+            list_version_date TEXT -- To track when this entry was added from the source
         )
     ''')
 
@@ -37,7 +37,7 @@ def init_database():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             user_action TEXT NOT NULL,
-            client_id INTEGER,
+            client_id INTEGER, -- Can be NULL if action isn't client-specific
             details TEXT,
             FOREIGN KEY (client_id) REFERENCES clients (id)
         )
@@ -47,7 +47,7 @@ def init_database():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS list_metadata (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            list_name TEXT UNIQUE NOT NULL,
+            list_name TEXT UNIQUE NOT NULL, -- e.g., 'OFAC SDN'
             last_updated TIMESTAMP
         )
     ''')
@@ -56,20 +56,12 @@ def init_database():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS system_auth (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            master_password_hash TEXT,
+            master_password_hash TEXT NOT NULL,
             setup_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_login TIMESTAMP,
             failed_attempts INTEGER DEFAULT 0,
             locked_until TIMESTAMP NULL,
             system_id TEXT UNIQUE NOT NULL
-        )
-    ''')
-
-    # 6. System metadata table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS system_metadata (
-            key TEXT PRIMARY KEY,
-            value TEXT
         )
     ''')
 
@@ -85,7 +77,7 @@ def init_database():
         system_id = secrets.token_hex(16)
         cursor.execute(
             'INSERT INTO system_auth (system_id, master_password_hash) VALUES (?, ?)',
-            (system_id, None)  # None inserts as NULL, indicating unset
+            (system_id, '')  # Empty until first setup
         )
 
     # Commit the changes and close the connection

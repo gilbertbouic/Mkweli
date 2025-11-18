@@ -1,4 +1,4 @@
-import hashlib
+import bcrypt
 import secrets
 from datetime import datetime, timedelta
 from database import db
@@ -12,7 +12,7 @@ class AuthSystem:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS system_auth (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    master_password_hash TEXT,  -- Allow NULL for initial unset state
+                    master_password_hash BLOB NOT NULL,
                     setup_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_login TIMESTAMP,
                     failed_attempts INTEGER DEFAULT 0,
@@ -26,7 +26,7 @@ class AuthSystem:
                 system_id = secrets.token_hex(16)
                 cursor.execute(
                     'INSERT INTO system_auth (system_id, master_password_hash) VALUES (?, ?)',
-                    (system_id, None)  # None inserts as NULL, indicating unset
+                    (system_id, b'')  # Empty bytes until setup
                 )
     
     def setup_master_password(self, password):
@@ -50,10 +50,12 @@ class AuthSystem:
             
             stored_hash, failed_attempts, locked_until = result
             
+            # Check if system is locked
             if locked_until and datetime.now() < datetime.fromisoformat(locked_until):
                 return False
             
-            if self._hash_password(password) == stored_hash:
+            # Verify password
+            if self._check_password(password, stored_hash):
                 cursor.execute(
                     'UPDATE system_auth SET failed_attempts = 0, last_login = CURRENT_TIMESTAMP, locked_until = NULL'
                 )
@@ -76,8 +78,8 @@ class AuthSystem:
     def is_password_set(self):
         with db.get_cursor() as cursor:
             cursor.execute('SELECT master_password_hash FROM system_auth LIMIT 1')
-            row = cursor.fetchone()
-            return bool(row and row[0])
+            result = cursor.fetchone()
+            return result and result[0] != b''
     
     def get_system_id(self):
         with db.get_cursor() as cursor:
@@ -86,5 +88,7 @@ class AuthSystem:
             return result[0] if result else None
     
     def _hash_password(self, password):
-        salt = "mkweli_aml_2023_salt"
-        return hashlib.sha256((password + salt).encode()).hexdigest()
+        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    
+    def _check_password(self, password, stored_hash):
+        return bcrypt.checkpw(password.encode('utf-8'), stored_hash)
