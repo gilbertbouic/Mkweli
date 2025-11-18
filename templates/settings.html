@@ -1,6 +1,19 @@
 {% extends "base.html" %}
 
 {% block content %}
+<<<<<<< HEAD
 <h1>Settings</h1>
 <p>App settings here (e.g., change pw).</p>
+=======
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Settings</h1>
+</div>
+<form method="POST">
+    <div class="mb-3">
+        <label for="org_name" class="form-label">Organization Name</label>
+        <input type="text" class="form-control" id="org_name" name="org_name" value="{{ org_name }}">
+    </div>
+    <button type="submit" class="btn btn-primary">Save Changes</button>
+</form>
+>>>>>>> 4bfb9585fdcb6db813b32955452182091acac196
 {% endblock %}
