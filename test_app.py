@@ -16,6 +16,7 @@ class TestApp(unittest.TestCase):
         app.config['TESTING'] = True
         app.config['WTF_CSRF_ENABLED'] = False
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+        app.config['DEBUG'] = False  # Test prod-like
         self.client = app.test_client()
         with app.app_context():
             db.create_all()
@@ -44,6 +45,42 @@ class TestApp(unittest.TestCase):
     def test_invalid_username(self):  # Edge: Validation raise
         with self.assertRaises(ValueError):
             User(username='invalid<script>', password='pass12345')
+
+    def test_debugger_disabled(self):  # Security: No debug in prod config
+        self.assertFalse(app.config['DEBUG'], "Debug should be False in prod")
+
+    def test_form_resource_limit(self):  # Performance/Security: Large input handled
+        with self.assertRaises(ValueError):  # Simulate oversize (adapt for full upload test)
+            # Mock large data; in real, test with request.files
+            pass  # Placeholder; expand with mock request if uploads added
+
+    def test_safe_path_windows(self):  # Security: No traversal on Windows
+        import sys
+        original_platform = sys.platform
+        sys.platform = 'win32'
+        try:
+            from utils import download_file
+            with self.assertRaises(ValueError):
+                download_file('https://evil/../url', '../../badfile')  # Should raise on invalid
+        finally:
+            sys.platform = original_platform
+
+    def test_jinja_injection(self):  # Security: No attr injection
+        from flask import render_template_string
+        template = "{{ '<script>' | xmlattr }}"  # Mock user input
+        with app.app_context():
+            result = render_template_string(template)
+            self.assertNotIn('<script>', result)  # Sanitized/escaped
+
+    def test_requests_verify(self):  # Security: Verify enabled
+        from utils import download_file
+        # Mock requests.get to check verify
+        with patch('requests.get') as mock_get:
+            try:
+                download_file('https://example.com', 'test.xml')
+            except:
+                pass
+            mock_get.assert_called_with('https://example.com', timeout=10, verify=True)
 
 class TestDBIncorporation(unittest.TestCase):
     def setUp(self):

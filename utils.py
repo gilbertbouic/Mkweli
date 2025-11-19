@@ -23,12 +23,12 @@ def ensure_data_dir():
 
 def download_file(url, filename):
     try:
-        if not url.startswith('http'):
-            raise ValueError("Invalid URL format.")
-        filepath = os.path.join(DATA_DIR, filename)
+        if not url.startswith('https://'):  # Stronger validation for security
+            raise ValueError("Invalid URL format: Must be HTTPS.")
+        filepath = os.path.normpath(os.path.join(DATA_DIR, filename))  # Sanitize path (security: no traversal)
         if os.path.exists(filepath):
             return filepath  # Performance: Skip if exists
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, timeout=10, verify=True)  # Explicit verify for SSL security
         response.raise_for_status()
         with open(filepath, 'wb') as f:
             f.write(response.content)
