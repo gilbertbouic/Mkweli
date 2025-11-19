@@ -15,7 +15,7 @@
   {% if messages %}
     <ul aria-live="polite">
       {% for category, message in messages %}
-        <li class="{{ category }}">{{ message }}</li>
+       <div class="alert {{ category }}">{{ message }}</div>  <!-- Feedback: error/success -->
       {% endfor %}
     </ul>
   {% endif %}

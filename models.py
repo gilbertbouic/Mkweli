@@ -2,7 +2,7 @@
 from werkzeug.security import generate_password_hash, check_password_hash
 import re  # For sanitization
 
-from app import db  # Import db (safe: app defines it)
+from extensions import db  # Import from extensions (avoids cycle)
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
