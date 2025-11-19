@@ -12,6 +12,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Performance
 
 db = SQLAlchemy(app)  # DB init
+from flask_migrate import Migrate
+migrate = Migrate(app, db)
 
 # Import/register blueprints: Modular (no circulars)
 from routes import auth, main, sanctions
