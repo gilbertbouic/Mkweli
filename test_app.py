@@ -3,8 +3,9 @@
 
 import unittest
 from unittest.mock import patch  # Mock downloads (no network/404)
-from app import app, db
-from models import User, Individual, Alias  # Added
+from app import app
+from extensions import db  # From extensions
+from models import User, Individual, Alias
 from forms import LoginForm
 from utils import update_sanctions_lists, incorporate_to_db
 
@@ -35,9 +36,10 @@ class TestApp(unittest.TestCase):
 
     def test_login_invalid(self):  # Edge: Wrong pw; error feedback
         response = self.client.post('/login', data={'username': 'test@example.com', 'password': 'wrong'})
-        self.assertIn(b'Invalid credentials', response.data)
+        self.assertIn(b'Invalid credentials', response.data)  # Check flash in HTML (template must display)
 
-    def test_update_lists(self):  # Update: Redirect; edge error handle
+    @patch('utils.download_file', side_effect=mock_download)  # Mock: No real downloads/404
+    def test_update_lists(self, mock_download):  # Update: Redirect; edge error handle
         self.client.post('/login', data={'username': 'test@example.com', 'password': 'testpass123'})
         response = self.client.post('/update_lists')
         self.assertEqual(response.status_code, 302)
@@ -50,9 +52,9 @@ class TestApp(unittest.TestCase):
         self.assertFalse(app.config['DEBUG'], "Debug should be False in prod")
 
     def test_form_resource_limit(self):  # Performance/Security: Large input handled
-        with self.assertRaises(ValueError):  # Simulate oversize (adapt for full upload test)
-            # Mock large data; in real, test with request.files
-            pass  # Placeholder; expand with mock request if uploads added
+        with patch('app.app.config', new={'MAX_CONTENT_LENGTH': 1}):  # Sim small limit
+            response = self.client.post('/login', data={'username': 'a' * 10})  # Oversize
+            self.assertEqual(response.status_code, 413)  # Request Entity Too Large (adapt if no upload)
 
     def test_safe_path_windows(self):  # Security: No traversal on Windows
         import sys
@@ -61,16 +63,16 @@ class TestApp(unittest.TestCase):
         try:
             from utils import download_file
             with self.assertRaises(ValueError):
-                download_file('https://evil/../url', '../../badfile')  # Should raise on invalid
+                download_file('https://evil/../url', '../../badfile')  # Invalid URL/path raise
         finally:
             sys.platform = original_platform
 
     def test_jinja_injection(self):  # Security: No attr injection
         from flask import render_template_string
-        template = "{{ '<script>' | xmlattr }}"  # Mock user input
+        template = "{{ {'onload': '<script>alert(1)</script>'} | xmlattr }}"  # Sim user input dict
         with app.app_context():
             result = render_template_string(template)
-            self.assertNotIn('<script>', result)  # Sanitized/escaped
+            self.assertNotIn('<script>', result)  # Escaped: onload="&lt;script&gt;alert(1)&lt;/script&gt;"
 
     def test_requests_verify(self):  # Security: Verify enabled
         from utils import download_file
@@ -94,7 +96,7 @@ class TestDBIncorporation(unittest.TestCase):
 
     @patch('utils.download_file', side_effect=mock_download)  # Mock: No network/404
     def test_insert_individual(self, mock_download):  # Valid insert: In DB
-        data = {'un_consolidated.xml': [{'ref': 'TEST001', 'name': 'Test Name', 'aliases': ['Alias1']}]}
+        data = {'un_consolidated.xml': [{'type': 'individual', 'ref': 'TEST001', 'name': 'Test Name', 'aliases': ['Alias1']}]}
         with app.app_context():
             incorporate_to_db(data)
             ind = Individual.query.filter_by(reference_number='TEST001').first()
@@ -104,15 +106,15 @@ class TestDBIncorporation(unittest.TestCase):
 
     @patch('utils.download_file', side_effect=mock_download)
     def test_duplicate_ref_error(self, mock_download):  # Edge: Duplicate raise
-        data = {'un_consolidated.xml': [{'ref': 'DUP001', 'name': 'Dup'}]}
+        data = {'un_consolidated.xml': [{'type': 'individual', 'ref': 'DUP001', 'name': 'Dup'}]}
         with app.app_context():
             incorporate_to_db(data)
-            with self.assertRaises(ValueError):
+            with self.assertRaises(ValueError):  # Assume unique constraint raises; if not, add check
                 incorporate_to_db(data)
 
     @patch('utils.download_file', side_effect=mock_download)
     def test_invalid_data_rollback(self, mock_download):  # Error: Bad input; no insert
-        data = {'un_consolidated.xml': [{'ref': 'INV001', 'name': 123}]}
+        data = {'un_consolidated.xml': [{'type': 'individual', 'ref': 'INV001', 'name': 123}]}
         with app.app_context():
             with self.assertRaises(ValueError):
                 incorporate_to_db(data)

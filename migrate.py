@@ -1,5 +1,6 @@
 # migrate.py - CLI for DB migrations. Run: flask db <command> (e.g., init, migrate, upgrade).
-from app import app, db
+from extensions import db  # From extensions (avoids cycle)
+from app import app
 from flask_migrate import Migrate
 
 migrate = Migrate(app, db)  # Init (uses Flask CLI—no deprecated script)

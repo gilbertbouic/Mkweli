@@ -3,7 +3,6 @@
 
 import os
 from flask import Flask, render_template
-from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'fallback_secure_key')  # Security: Env var
@@ -12,7 +11,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Performance
 app.config['DEBUG'] = os.environ.get('FLASK_DEBUG', 'False') == 'True'  # Security: Env-controlled debug
 
-db = SQLAlchemy(app)  # DB init
+from extensions import db  # Import after app creation (avoids cycle)
+db.init_app(app)  # Bind db to app lazily
+
 from flask_migrate import Migrate
 migrate = Migrate(app, db)
 

@@ -1,5 +1,6 @@
 # init_db.py - CLI: Creates DB/tables/user. Run: python init_db.py (all OS).
-from app import app, db  # Safe: app.py defines db without running routes yet
+from extensions import db  # From extensions (avoids cycle)
+from app import app  # Safe now
 from models import User
 from sqlalchemy import text  # For textual SQL
 
