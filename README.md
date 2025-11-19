@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 MkweliAML - Sanctions Checker
 
 Local run (Ubuntu/Win/Mac):
@@ -83,4 +82,3 @@ No keys to add. Data is local. Clean duplicates to keep small.
 License: Apache-2.0.
 
 Made by Gilbert Clement Bouic. Help from Grok AI.
->>>>>>> 4bfb9585fdcb6db813b32955452182091acac196

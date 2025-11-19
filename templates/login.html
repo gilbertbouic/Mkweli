@@ -1,61 +1,23 @@
-<<<<<<< HEAD
-<!-- login.html - Simple form with feedback. -->
-{% extends 'base.html' %} {% block content %}
-<form method="post">
+<!-- login.html - Simple form with feedback. Fixed duplicate block. -->
+{% extends 'base.html' %}
+
+{% block content %}
+<form method="post" aria-label="Login form">
     {{ form.hidden_tag() }}
     <label for="username">Username:</label>
-    <input type="text" id="username" name="username" required pattern="[\w.@+-]+"> <!-- Client-side sanitization -->
+    {{ form.username(required=True, pattern="[\w.@+-]+") }}  <!-- Client-side validation -->
     <label for="password">Password:</label>
-    <input type="password" id="password" name="password" required minlength="8">
+    {{ form.password(required=True, minlength=8) }}
     <button type="submit">Login</button>
 </form>
 {% endblock %}
+
 {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        <ul>
-            {% for category, message in messages %}
-                <li class="{{ category }}">{{ message }}</li>
-            {% endfor %}
-        </ul>
-    {% endif %}
+  {% if messages %}
+    <ul aria-live="polite">
+      {% for category, message in messages %}
+        <li class="{{ category }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
 {% endwith %}
-{% extends "base.html" %}
-
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h4 class="card-title mb-0">🔒 MkweliAML Login</h4>
-            </div>
-            <div class="card-body">
-                <div class="text-center mb-4">
-                    <h5>Master Password Required</h5>
-                    <p class="text-muted">Enter your master password to access the system</p>
-                </div>
-
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Master Password</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                        <div class="form-text">
-                            This is the master password you set during initial setup.
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary w-100">Unlock System</button>
-                </form>
-
-                <div class="mt-4">
-                    <div class="alert alert-info">
-                        <small>
-                            <strong>Security Note:</strong> After 5 failed attempts, the system will lock for 30 minutes.
-                        </small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
->>>>>>> 4bfb9585fdcb6db813b32955452182091acac196

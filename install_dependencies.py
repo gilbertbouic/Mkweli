@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 """
 MkweliAML Dependency Installer
-<<<<<<< HEAD
 Run this script to install all required dependencies
 Run this script to install all required dependencies in a virtual environment.
->>>>>>> 4bfb9585fdcb6db813b32955452182091acac196
 """
 
 import sys
 import subprocess
 import os
-<<<<<<< HEAD
 
 def run_command(command):
     try:
@@ -23,7 +20,6 @@ def run_command(command, venv_python=None):
         print(f"Running: {command}")
         if venv_python:
             command = f"{venv_python} -m {command}"
->>>>>>> 4bfb9585fdcb6db813b32955452182091acac196
         result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
         print(f"Success: {command}")
         return True
@@ -36,14 +32,11 @@ def main():
     print("MkweliAML Dependency Installer")
     print("=" * 40)
     
-<<<<<<< HEAD
     # Check Python version
->>>>>>> 4bfb9585fdcb6db813b32955452182091acac196
     if sys.version_info < (3, 8):
         print("ERROR: Python 3.8 or later is required.")
         sys.exit(1)
     
-<<<<<<< HEAD
     dependencies = [
         "pip install Flask==2.3.3",
         "pip install Werkzeug==2.3.7", 
@@ -66,12 +59,10 @@ def main():
     dependencies = [
         "pip install Flask==2.3.3",
         "pip install Werkzeug==2.3.7",
->>>>>>> 4bfb9585fdcb6db813b32955452182091acac196
         "pip install WeasyPrint==58.0",
         "pip install pandas==2.0.3",
         "pip install openpyxl==3.1.2",
         "pip install Jinja2==3.1.2",
-<<<<<<< HEAD
         "pip install requests==2.31.0",
         "pip install fuzzywuzzy==0.18.0"
     ]
@@ -99,7 +90,6 @@ def main():
     print("2. Open browser to: http://localhost:5000")
     print("3. Set up your master password on first launch")
     print("4. Start using MkweliAML!")
->>>>>>> 4bfb9585fdcb6db813b32955452182091acac196
 
 if __name__ == "__main__":
     main()

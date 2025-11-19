@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 MkweliAML - Open-Source AML & KYC Tool for Low-Budget Users
 
 Overview:
@@ -78,4 +77,3 @@ Troubleshooting
 For issues, consult script comments or Python docs. No support provided.
 
 License: Proprietary - For internal use only.
->>>>>>> 4bfb9585fdcb6db813b32955452182091acac196
