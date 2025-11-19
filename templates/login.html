@@ -10,7 +10,6 @@
     {{ form.password(required=True, minlength=8) }}
     <button type="submit">Login</button>
 </form>
-{% endblock %}
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
@@ -21,3 +20,4 @@
     </ul>
   {% endif %}
 {% endwith %}
+{% endblock %}
