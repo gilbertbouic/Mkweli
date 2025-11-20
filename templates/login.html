@@ -1,19 +1,47 @@
-<!-- login.html - Simple form with feedback. Fixed duplicate block. -->
-{% extends "base.html" %}  <!-- Assume base.html for hierarchy/nav -->
+{% extends "base.html" %}
 
 {% block content %}
-<form method="post" aria-label="Login form">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert {{ category }}" role="alert">{{ message }}</div>  <!-- Feedback: error/success; accessibility -->
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-    <label for="username">Username:</label>
-    <input id="username" name="username" pattern="[\\w.@+-]+" required type="text" value=""> <!-- Client-side validation/sanitization -->
-    <label for="password">Password:</label>
-    <input id="password" minlength="8" name="password" required type="password" value="">
-    <button type="submit">Login</button>
-</form>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5 col-lg-4">
+            <div class="card shadow">
+                <div class="card-body p-5">
+                    <h2 class="text-center mb-4 fw-bold">AML Shield</h2>
+                    <p class="text-center text-muted mb-4">Anti-Money Laundering Screening</p>
+
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="post" aria-label="Login form">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Email Address</label>
+                            <input type="email" class="form-control form-control-lg" id="username" name="username" 
+                                   required autofocus placeholder="admin@example.com">
+                        </div>
+                        <div class="mb-4">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control form-control-lg" id="password" name="password" 
+                                   minlength="8" required placeholder="••••••••">
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">Sign In</button>
+                        </div>
+                    </form>
+
+                    <div class="text-center mt-4">
+                        <small class="text-muted">Open-source AML tool • v1.0</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
