@@ -27,9 +27,9 @@ def login():
                 session['user_id'] = user.id
                 flash('Login successful!', 'success')
                 return redirect(request.args.get('next') or url_for('main.dashboard'))
-            flash('Invalid credentials.', 'error')
+            flash('Invalid credentials.', 'danger')
         except Exception as e:
-            flash('Login error—try again.', 'error')  # User-friendly
+            flash('Login error—try again.', 'danger')  # User-friendly
     return render_template('login.html', form=form)  # ARIA: form aria-label="Login form"
 
 @auth.route('/logout')

@@ -3,17 +3,15 @@
 
 import os
 from flask import Flask, render_template
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'fallback_secure_key')  # Security: Env var
 db_path = os.path.join(os.path.dirname(__file__), 'instance', 'site.db')  # Cross-OS path
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Performance
-app.config['DEBUG'] = os.environ.get('FLASK_DEBUG', 'False') == 'True'  # Security: Env-controlled debug
 
-from extensions import db  # Import after app creation (avoids cycle)
-db.init_app(app)  # Bind db to app lazily
-
+db = SQLAlchemy(app)  # DB init
 from flask_migrate import Migrate
 migrate = Migrate(app, db)
 
@@ -33,4 +31,4 @@ def server_error(e):
     return render_template('error.html', message='Internal error—please try again.'), 500
 
 if __name__ == '__main__':
-    app.run(debug=app.config['DEBUG'])  # Use config; False in prod for no debugger
+    app.run(debug=True)  # Dev mode
