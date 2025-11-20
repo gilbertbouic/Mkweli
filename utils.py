@@ -7,6 +7,13 @@ import csv
 
 from extensions import db  # From extensions (avoids cycle)
 from models import Individual, Entity, Alias, Address, Sanction  # Import models
+from fuzzywuzzy import fuzz
+from fuzzywuzzy import process
+from models import Individual, Alias
+from app import db
+from weasyprint import HTML
+from jinja2 import Template
+from datetime import datetime
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -101,3 +108,61 @@ def incorporate_to_db(parsed_data):  # Called after parsing in update_sanctions_
     except Exception as e:
         db.session.rollback()  # Error handling
         raise ValueError(f"DB insert error: {str(e)}")
+
+def perform_screening(df):
+    results = []
+    with db.session.begin():
+        individuals = Individual.query.all()
+        for index, row in df.iterrows():
+            name = row['name'].strip().lower()  # Sanitize
+            dob = row['dob'] if 'dob' in row else None
+            nationality = row['nationality'].strip().lower() if 'nationality' in row else None
+            matches = process.extractBests(name, [ind.name.lower() for ind in individuals], scorer=fuzz.token_sort_ratio, limit=3)
+            high_matches = [m for m in matches if m[1] > 80]  # Threshold for match
+            if high_matches:
+                for match_name, score in high_matches:
+                    ind = next(i for i in individuals if i.name.lower() == match_name)
+                    aliases = [a.alias_name for a in ind.aliases]
+                    result = {
+                        'client_name': name,
+                        'match_name': ind.name,
+                        'score': score,
+                        'dob_match': dob == ind.dob if dob else 'N/A',
+                        'nationality_match': nationality == ind.nationality if nationality else 'N/A',
+                        'aliases': aliases,
+                        'source': ind.source
+                    }
+                    results.append(result)
+    return results
+
+def generate_pdf_report(results):
+    template_str = """
+    <html>
+    <head><style>table { border-collapse: collapse; } th, td { border: 1px solid black; padding: 8px; }</style></head>
+    <body>
+        <h1>AML Screening Report</h1>
+        <p>Generated on {{ date }}</p>
+        <table>
+            <tr><th>Client Name</th><th>Match Name</th><th>Score</th><th>DOB Match</th><th>Nationality Match</th><th>Aliases</th><th>Source</th></tr>
+            {% for result in results %}
+            <tr>
+                <td>{{ result.client_name }}</td>
+                <td>{{ result.match_name }}</td>
+                <td>{{ result.score }}</td>
+                <td>{{ result.dob_match }}</td>
+                <td>{{ result.nationality_match }}</td>
+                <td>{{ result.aliases | join(', ') }}</td>
+                <td>{{ result.source }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </body>
+    </html>
+    """
+    template = Template(template_str)
+    html_content = template.render(results=results, date=datetime.now().strftime('%Y-%m-%d'))
+    html = HTML(string=html_content)
+    pdf_buffer = BytesIO()
+    html.write_pdf(target=pdf_buffer)
+    pdf_buffer.seek(0)
+    return pdf_buffer
