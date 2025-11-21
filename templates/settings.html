@@ -1,17 +1,33 @@
 {% extends "base.html" %}
 
-{% block content %}
+{% block title %}Settings{% endblock %}
 
-<h1>Settings</h1>
-<p>App settings here (e.g., change pw).</p>
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Settings</h1>
+{% block content %}
+<div class="container mt-5">
+    <h1 class="mb-4">User Settings</h1>
+    <p class="text-muted mb-4">Update your organization details. These will appear in reports.</p>
+    
+    <form method="post" aria-label="User details form">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.org_company.label(class="form-label") }}
+            {{ form.org_company(class="form-control", required=true) }}
+        </div>
+        <div class="mb-3">
+            {{ form.address.label(class="form-label") }}
+            {{ form.address(class="form-control", required=true) }}
+        </div>
+        <div class="mb-3">
+            {{ form.phone.label(class="form-label") }}
+            {{ form.phone(class="form-control", required=true) }}
+        </div>
+        <div class="mb-3">
+            {{ form.tax_reg.label(class="form-label") }}
+            {{ form.tax_reg(class="form-control', required=true) }}
+        </div>
+        <div class="d-grid">
+            {{ form.submit(class="btn btn-primary btn-lg") }}
+        </div>
+    </form>
 </div>
-<form method="POST">
-    <div class="mb-3">
-        <label for="org_name" class="form-label">Organization Name</label>
-        <input type="text" class="form-control" id="org_name" name="org_name" value="{{ org_name }}">
-    </div>
-    <button type="submit" class="btn btn-primary">Save Changes</button>
-</form>
 {% endblock %}

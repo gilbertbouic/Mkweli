@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Sanctions Lists{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="mb-4 text-primary fw-bold">Sanctions Lists Management</h1>
+    
+    <div class="alert alert-info" role="alert">
+        <strong>Manual Download Required</strong><br>
+        This tool works offline. Download the latest XML files from official sources, rename them exactly as shown, and place them in the <code>data/</code> folder at project root.
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-2 g-4 mb-5">
+        <div class="col">
+            <div class="card h-100 border-primary">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">UN Consolidated List (UN)</h5>
+                    <p><strong>Link:</strong> <a href="https://main.un.org/securitycouncil/en/content/un-sc-consolidated-list" target="_blank">Official UN Page</a></p>
+                    <p><strong>Download:</strong> Click "Download the Consolidated List" → XML</p>
+                    <p><strong>Rename to:</strong> <code>un_consolidated.xml</code></p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100 border-warning">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">UK Consolidated List</h5>
+                    <p><strong>Link:</strong> <a href="https://www.gov.uk/government/publications/the-uk-sanctions-list" target="_blank">Official UK Page</a></p>
+                    <p><strong>Download:</strong> "UK Sanctions List (XML)" button</p>
+                    <p><strong>Rename to:</strong> <code>uk_consolidated.xml</code></p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100 border-success">
+                <div class="card-body">
+                    <h5 class="card-title text-success">OFAC Consolidated List</h5>
+                    <p><strong>Link:</strong> <a href="https://www.treasury.gov/resource-center/sanctions/SDN-List/Pages/default.aspx" target="_blank">Official OFAC Page</a></p>
+                    <p><strong>Download:</strong> "Advanced SDN XML File"</p>
+                    <p><strong>Rename to:</strong> <code>ofac_consolidated.xml</code></p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100 border-danger">
+                <div class="card-body">
+                    <h5 class="card-title text-danger">EU Consolidated List</h5>
+                    <p><strong>Link:</strong> <a href="https://www.sanctionsmap.eu" target="_blank">SanctionsMap.eu</a></p>
+                    <p><strong>Download:</strong> Main page → Access/Download → Consolidated Financial Sanctions File 1.0 → latest date link</p>
+                    <p><strong>Rename to:</strong> <code>eu_consolidated.xml</code></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-5">
+
+    <h3 class="mb-3">Current Status in Database</h3>
+    <form method="post" action="{{ url_for('sanctions.update_lists') }}">
+        <button type="submit" class="btn btn-lg btn-success hover-shadow">Update Lists from data/ folder</button>
+    </form>
+
+    {% if data %}
+        <div class="table-responsive mt-4">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>File</th>
+                        <th>Status</th>
+                        <th>Records Loaded</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file, count in data.items() %}
+                    <tr>
+                        <td><code>{{ file }}</code></td>
+                        <td>{% if count > 0 %}Loaded{% else %}Missing or empty{% endif %}</td>
+                        <td>{{ count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="text-muted mt-3">No data loaded yet. Place files in data/ and click Update.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -21,7 +21,7 @@ class TestApp(unittest.TestCase):
         app.config['WTF_CSRF_ENABLED'] = False
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
         self.client = app.test_client()
-        with app.app_context():  # Push context to register app with db (fixes RuntimeError)
+        with app.app_context():
             db.create_all()
             user = User(username='test@example.com', password='testpass123')
             db.session.add(user)
@@ -30,7 +30,7 @@ class TestApp(unittest.TestCase):
     def tearDown(self):
         with app.app_context():
             db.drop_all()
-        # Cleanup test.csv if exists (best option: simple check + remove; safe, cross-platform, no try/except needed for low-tech)
+        # Cleanup test.csv if exists (best option: simple, safe, cross-platform; no error if missing; low-tech - no try/except needed)
         if os.path.exists('test.csv'):
             os.remove('test.csv')
 
