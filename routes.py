@@ -23,8 +23,10 @@ def login():
     if form.validate_on_submit():
         try:
             user = User.query.filter_by(username=form.username.data).first()
-            if user and user.check_password(form.password.data):
+    if user and user.check_password(form.password.data):
                 session['user_id'] = user.id
+                from utils import start_session_log
+                start_session_log(user.id, request.remote_addr)
                 flash('Login successful!', 'success')
                 # Auto-create user details if not exist
                 if not user.user_details:
@@ -39,8 +41,13 @@ def login():
 
 @auth.route('/logout')
 def logout():
+    user_id = session.get('user_id')
+    ip = request.remote_addr
+    from utils import close_session_log
+    if user_id:
+        close_session_log()
     session.pop('user_id', None)
-    flash('Logged out.', 'success')
+    flash('Logged out successfully.', 'success')
     return redirect(url_for('main.index'))
 
 main = Blueprint('main', __name__)
