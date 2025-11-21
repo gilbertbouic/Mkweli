@@ -27,6 +27,33 @@ class User(db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+class UserDetails(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
+    org_company = db.Column(db.String(255), nullable=False)
+    address = db.Column(db.String(255), nullable=False)
+    phone = db.Column(db.String(50), nullable=False)
+    tax_reg = db.Column(db.String(50), nullable=False)
+
+    def __init__(self, user_id, org_company, address, phone, tax_reg):
+        self.user_id = user_id
+        self.org_company = org_company.strip()
+        self.address = address.strip()
+        self.phone = self.sanitize_phone(phone)
+        self.tax_reg = self.sanitize_tax(tax_reg)
+
+    @staticmethod
+    def sanitize_phone(phone):
+        if not re.match(r'^\+?[\d\s-]{7,20}$', phone):
+            raise ValueError("Invalid phone format.")
+        return phone
+
+    @staticmethod
+    def sanitize_tax(tax_reg):
+        if not re.match(r'^[\w-]{5,20}$', tax_reg):
+            raise ValueError("Invalid tax/reg format.")
+        return tax_reg
+
 # Sanctions Schema: Normalized tables
 class Individual(db.Model):
     id = db.Column(db.Integer, primary_key=True)

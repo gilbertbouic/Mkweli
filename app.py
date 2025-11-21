@@ -13,7 +13,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Performance
 app.config['UPLOAD_FOLDER'] = 'uploads'  # For client files
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)  # Performance: Create if missing
 
-db = SQLAlchemy(app)  # DB init
+from extensions import db  # Import db (safe: extensions defines it)
+db.init_app(app)  # Bind db to app (fixes RuntimeError)
+
 from flask_migrate import Migrate
 migrate = Migrate(app, db)
 

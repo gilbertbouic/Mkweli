@@ -1,8 +1,8 @@
 # routes.py - Defines blueprints/routes. Import forms/models/utils (flat; no app).
 from flask import Blueprint, render_template, redirect, url_for, flash, session, request  # Added: render_template
 from functools import wraps
-from forms import LoginForm
-from models import User
+from forms import LoginForm, UserDetailsForm  # Added
+from models import User, UserDetails
 from utils import update_sanctions_lists
 
 # Decorator: Auth logic (reviewed: Secure session)
@@ -26,10 +26,15 @@ def login():
             if user and user.check_password(form.password.data):
                 session['user_id'] = user.id
                 flash('Login successful!', 'success')
+                # Auto-create user details if not exist
+                if not user.user_details:
+                    user_details = UserDetails(user_id=user.id, org_company='', address='', phone='', tax_reg='')
+                    db.session.add(user_details)
+                    db.session.commit()
                 return redirect(request.args.get('next') or url_for('main.dashboard'))
-            flash('Invalid credentials.', 'danger')
+            flash('Invalid credentials.', 'error')
         except Exception as e:
-            flash('Login error—try again.', 'danger')  # User-friendly
+            flash('Login error—try again.', 'error')  # User-friendly
     return render_template('login.html', form=form)  # ARIA: form aria-label="Login form"
 
 @auth.route('/logout')

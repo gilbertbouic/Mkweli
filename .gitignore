@@ -1,10 +1,38 @@
-# Virtual environments
+# Virtual env
 venv/
-.venv/
+env/
+ENV/
 
-# Python cache/DB/temp
-__pycache__/
-*.pyc
+# Flask
 instance/
-*.log
+.webassets-cache
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# DB
 *.db
+*.sqlite
+*.sqlite3
+
+# Uploads & Logs (user-generated)
+uploads/*
+!uploads/.gitkeep  # keep folder structure
+logs/*
+!logs/.gitkeep
+
+# Test files
+test.csv
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
