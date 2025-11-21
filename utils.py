@@ -1,168 +1,250 @@
-# utils.py - Handles sanctions data with error handling/performance (downloads only if missing).
+# utils.py - Core utilities: manual sanctions parsing, client screening, PDF reports, logging, SHA256
+# 100% manual – no downloads. Modular, single responsibility.
+
 import os
-import requests
 import logging
 from xml.etree import ElementTree as ET
-import csv
-
-from extensions import db  # From extensions (avoids cycle)
-from models import Individual, Entity, Alias, Address, Sanction  # Import models
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
+from extensions import db
 from models import Individual, Alias
-from app import db
 from weasyprint import HTML
 from jinja2 import Template
 from datetime import datetime
+from io import BytesIO
+import hashlib
 
 logging.basicConfig(level=logging.ERROR)
 
 DATA_DIR = 'data'
-# Optimal URLs: Direct, working links (validated Nov 19, 2025 from official sites)
-UN_URL = 'https://scsanctions.un.org/resources/xml/en/consolidated.xml'  # UN (working)
-UK_URL = 'https://ofsistorage.blob.core.windows.net/publishlive/2022format/ConList.xml'  # UK current XML
-# CA_URL removed: No valid XML found (404/old); use fallback or alternative (e.g., OpenSanctions)
-OFAC_URL = 'https://ofac.treasury.gov/media/932951/download?inline'  # OFAC (working)
+LOGS_DIR = 'logs'
+os.makedirs(LOGS_DIR, exist_ok=True)
 
 def ensure_data_dir():
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
 
-def download_file(url, filename):
-    try:
-        if not url.startswith('https://'):  # Stronger validation for security
-            raise ValueError("Invalid URL format: Must be HTTPS.")
-        filepath = os.path.normpath(os.path.join(DATA_DIR, filename))  # Sanitize path (security: no traversal)
-        if os.path.exists(filepath):
-            return filepath  # Performance: Skip if exists
-        response = requests.get(url, timeout=10, verify=True)  # Explicit verify for SSL security
-        response.raise_for_status()
-        with open(filepath, 'wb') as f:
-            f.write(response.content)
-        return filepath
-    except ValueError as ve:
-        logging.error(str(ve))
-        raise  # Re-raise for feedback
-    except Exception as e:
-        logging.error(f"Download error: {str(e)}")
-        raise ValueError(f"Could not download {url}: {str(e)}")
-
-def parse_xml(filepath):
-    try:
-        tree = ET.parse(filepath)
-        entities = [elem.text for elem in tree.iter('Name6') if elem.text]  # Simple parse (adapt for full dict)
-        return entities  # Placeholder; adapt to return list of dict for incorporate
-    except Exception as e:
-        raise ValueError(f"Parse error in {filepath}: {str(e)}")
-
-def parse_csv(filepath):
-    try:
-        with open(filepath, 'r') as f:
-            return list(csv.reader(f))[1:]  # Data rows
-    except Exception as e:
-        raise ValueError(f"Parse error in {filepath}: {str(e)}")
-
 def update_sanctions_lists():
+    """Parse local XML files in data/ – returns dict with record counts for UI."""
     ensure_data_dir()
     files = {
-        'un_consolidated.xml': UN_URL,
-        'uk_consolidated.xml': UK_URL,
-        # 'ca_consolidated.xml': CA_URL,  # Removed: No valid 2025 XML; add if found
-        'sdn.xml': OFAC_URL,
+        'un_consolidated.xml': 'UN',
+        'uk_consolidated.xml': 'UK',
+        'ofac_consolidated.xml': 'OFAC',
+        'eu_consolidated.xml': 'EU'
     }
-    data = {}
-    for filename, url in files.items():
+    results = {}
+    total_loaded = 0
+    for filename in files.keys():
+        filepath = os.path.join(DATA_DIR, filename)
+        if not os.path.exists(filepath):
+            results[filename] = 0
+            continue
         try:
-            filepath = download_file(url, filename)
-            data[filename] = parse_xml(filepath) if filename.endswith('.xml') else parse_csv(filepath)
-        except ValueError as e:
-            logging.error(str(e))
-            data[filename] = []  # Graceful fallback
-    return data
-
-def incorporate_to_db(parsed_data):  # Called after parsing in update_sanctions_lists
-    try:
-        with db.session.begin():
-            for source, entries in parsed_data.items():
-                for entry in entries:
-                    # Adapted check: Assume 'type' key for entity type (update parse to add); fallback to always for test
-                    if isinstance(entry, dict) and (entry.get('type', '').lower() == 'individual' or True):  # Temp fallback for tests
-                        # Validation: Type checks (security/performance)
-                        ref = entry.get('ref', '') if isinstance(entry, dict) else ''
-                        name = entry.get('name', '')
-                        if not isinstance(ref, str):
-                            raise ValueError("Invalid ref type")
-                        if not isinstance(name, str):
-                            raise ValueError("Invalid name type")
-                        ind = Individual(reference_number=ref,
-                                         name=name.strip(),  # Sanitize
-                                         dob=entry.get('dob'), nationality=entry.get('nationality'),
-                                         listed_on=entry.get('listed_on'), source=source)
-                        db.session.add(ind)
-                        db.session.flush()  # Flush to get ind.id for relations
-                        # Add aliases/addresses (1-to-many; adapt)
-                        for alias in entry.get('aliases', []):
-                            db.session.add(Alias(individual_id=ind.id, alias_name=str(alias).strip()))
-                        # Similar for Address, Sanction
+            tree = ET.parse(filepath)
+            root = tree.getroot()
+            count = 0
+            # Parse individuals
+            for elem_list = root.findall('.//INDIVIDUAL') or root.findall('.//INDIVIDUALS/INDIVIDUAL') or []
+            for elem in elem_list:
+                try:
+                    ref = elem.findtext('.//DATAID') or elem.findtext('.//REFERENCE_NUMBER') or 'UNKNOWN'
+                    name = elem.findtext('.//FIRST_NAME') + ' ' + elem.findtext('.//LAST_NAME') if elem.findtext('.//FIRST_NAME') else elem.findtext('.//NAME')
+                    if not name:
+                        continue
+                    dob_str = elem.findtext('.//DATE_OF_BIRTH') or elem.findtext('.//DOB') or None
+                    nationality = elem.findtext('.//NATIONALITY/VALUE') or elem.findtext('.//NATIONALITY') or None
+                    
+                    individual = Individual(
+                        reference_number=ref.strip(),
+                        name=name.strip(),
+                        dob=dob_str,
+                        nationality=nationality,
+                        source=files[filename]
+                    )
+                    db.session.add(individual)
+                    # Aliases
+                    alias_elems = elem.findall('.//INDIVIDUAL_ALIAS')
+                    for alias_elem in alias_elems:
+                        alias_name = alias_elem.findtext('.//ALIAS_NAME')
+                        if alias_name:
+                            db.session.add(Alias(individual=individual, alias_name=alias_name.strip()))
+                    count += 1
+                except Exception as e:
+                    logging.error(f"Error parsing individual in {filename}: {str(e)}")
+            
+            # Parse entities (similar structure for most lists)
+            entity_list = root.findall('.//ENTITY') or root.findall('.//ENTITIES/ENTITY') or []
+            for elem in entity_list:
+                try:
+                    ref = elem.findtext('.//DATAID') or 'UNKNOWN'
+                    name = elem.findtext('.//NAME') or elem.findtext('.//ENTITY_NAME') or 'UNKNOWN'
+                    if not name:
+                        continue
+                    entity = Individual(  # Reuse Individual table for simplicity – or create Entity if needed
+                        reference_number=ref.strip(),
+                        name=name.strip(),
+                        source=files[filename]
+                    )
+                    db.session.add(entity)
+                    count += 1
+                except Exception as e:
+                    logging.error(f"Error parsing entity in {filename}: {str(e)}")
+            
             db.session.commit()
-    except Exception as e:
-        db.session.rollback()  # Error handling
-        raise ValueError(f"DB insert error: {str(e)}")
+            results[filename] = count
+            total_loaded += count
+        except Exception as e:
+            logging.error(f"Parse error {filename}: {str(e)}")
+            results[filename] = 0
+    
+    return results
 
 def perform_screening(df):
     results = []
-    with db.session.begin():
-        individuals = Individual.query.all()
-        for index, row in df.iterrows():
-            name = row['name'].strip().lower()  # Sanitize
-            dob = row['dob'] if 'dob' in row else None
-            nationality = row['nationality'].strip().lower() if 'nationality' in row else None
-            matches = process.extractBests(name, [ind.name.lower() for ind in individuals], scorer=fuzz.token_sort_ratio, limit=3)
-            high_matches = [m for m in matches if m[1] > 80]  # Threshold for match
-            if high_matches:
-                for match_name, score in high_matches:
-                    ind = next(i for i in individuals if i.name.lower() == match_name)
-                    aliases = [a.alias_name for a in ind.aliases]
-                    result = {
-                        'client_name': name,
-                        'match_name': ind.name,
-                        'score': score,
-                        'dob_match': dob == ind.dob if dob else 'N/A',
-                        'nationality_match': nationality == ind.nationality if nationality else 'N/A',
-                        'aliases': aliases,
-                        'source': ind.source
-                    }
-                    results.append(result)
+    individuals = Individual.query.all()
+    if not individuals:
+        return results
+
+    for _, row in df.iterrows():
+        name = str(row['name']).strip().lower()
+        dob = row.get('dob')
+        nationality = str(row.get('nationality', '')).strip().lower()
+
+        choices = {ind.id: ind.name.lower() for ind in individuals}
+        matches = process.extractBests(name, choices, scorer=fuzz.token_sort_ratio, limit=5)
+
+        for ind_id, score in matches:
+            if score < 82:
+                continue
+            ind = next(i for i in individuals if i.id == ind_id)
+            aliases = Alias.query.filter_by(individual_id=ind.id).all()
+            alias_list = [a.alias_name for a in aliases] if aliases else []
+
+            results.append({
+                'client_name': row['name'],
+                'match_name': ind.name,
+                'score': score,
+                'dob_match': 'Yes' if pd.notna(dob) and str(dob).strip() == str(ind.dob).strip() else 'No',
+                'nationality_match': 'Yes' if nationality and nationality == ind.nationality.lower() else 'No',
+                'aliases': ', '.join(alias_list) if alias_list else 'None',
+                'source': ind.source or 'Unknown',
+                'reference': ind.reference_number or 'N/A'
+            })
     return results
 
-def generate_pdf_report(results):
-    template_str = """
+def generate_pdf_report(results, user_details=None):
+    header = ""
+    if user_details:
+        header = f"""
+        <div style="text-align: center; margin-bottom: 30px; color: #561217;">
+            <h2>{user_details.get('org_company', 'AML Screening Report')}</h2>
+            <p>{user_details.get('address', '')}<br>
+            Phone: {user_details.get('phone', '')} | Tax/Reg: {user_details.get('tax_reg', '')}</p>
+        </div>
+        """
+
+    template_str = f"""
+    <!DOCTYPE html>
     <html>
-    <head><style>table { border-collapse: collapse; } th, td { border: 1px solid black; padding: 8px; }</style></head>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 40px; color: #333; }}
+            h1, h2 {{ color: #561217; }}
+            table {{ width: 100%; border-collapse: collapse; margin: 25px 0; }}
+            th, td {{ border: 1px solid #561217; padding: 12px; text-align: left; }}
+            th {{ background-color: #FBE5B6; color: #561217; }}
+            tr:nth-child(even) {{ background-color: #f9f9f9; }}
+            .footer {{ margin-top: 50px; text-align: center; color: #888; font-size: 0.9em; }}
+        </style>
+    </head>
     <body>
-        <h1>AML Screening Report</h1>
-        <p>Generated on {{ date }}</p>
+        {header}
+        <h1 style="text-align: center; color: #2C6E63;">AML Sanctions Screening Report</h1>
+        <p style="text-align: center;">Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+
+        {% if results %}
         <table>
-            <tr><th>Client Name</th><th>Match Name</th><th>Score</th><th>DOB Match</th><th>Nationality Match</th><th>Aliases</th><th>Source</th></tr>
-            {% for result in results %}
-            <tr>
-                <td>{{ result.client_name }}</td>
-                <td>{{ result.match_name }}</td>
-                <td>{{ result.score }}</td>
-                <td>{{ result.dob_match }}</td>
-                <td>{{ result.nationality_match }}</td>
-                <td>{{ result.aliases | join(', ') }}</td>
-                <td>{{ result.source }}</td>
-            </tr>
-            {% endfor %}
+            <thead>
+                <tr>
+                    <th>Client Name</th>
+                    <th>Match Name</th>
+                    <th>Score</th>
+                    <th>DOB Match</th>
+                    <th>Nationality Match</th>
+                    <th>Aliases</th>
+                    <th>Source</th>
+                    <th>Reference</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in results %}
+                <tr>
+                    <td>{{ r.client_name }}</td>
+                    <td>{{ r.match_name }}</td>
+                    <td>{{ r.score }}</td>
+                    <td>{{ r.dob_match }}</td>
+                    <td>{{ r.nationality_match }}</td>
+                    <td>{{ r.aliases }}</td>
+                    <td>{{ r.source }}</td>
+                    <td>{{ r.reference }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
+        {% else %}
+        <p style="text-align: center; color: #2C6E63; font-size: 1.2em;">No matches found.</p>
+        {% endif %}
+
+        <div class="footer">
+            <p>Report generated by AML Shield • Open Source • SHA256: {{ report_hash }}</p>
+        </div>
     </body>
     </html>
     """
+
+    # Generate PDF
     template = Template(template_str)
-    html_content = template.render(results=results, date=datetime.now().strftime('%Y-%m-%d'))
+    html_content = template.render(results=results or [], report_hash="TEMP_HASH")  # Placeholder
+    html = HTML(string=html_content)
+    pdf_buffer = BytesIO()
+    html.write_pdf(target=pdf_buffer)
+    
+    # Calculate real SHA256
+    pdf_buffer.seek(0)
+    sha256_hash = hashlib.sha256(pdf_buffer.getvalue()).hexdigest()
+    
+    # Re-render with real hash
+    html_content = template.render(results=results or [], report_hash=sha256_hash)
     html = HTML(string=html_content)
     pdf_buffer = BytesIO()
     html.write_pdf(target=pdf_buffer)
     pdf_buffer.seek(0)
-    return pdf_buffer
+    return pdf_buffer, sha256_hash  # Return buffer and hash for logging
+
+    # Logging system - per session, txt file, SHA256 on full file after close
+CURRENT_LOG_FILE = None
+
+def start_session_log(user_id, ip):
+    global CURRENT_LOG_FILE
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    CURRENT_LOG_FILE = os.path.join(LOGS_DIR, f"session_{user_id}_{timestamp}.txt")
+    log_entry(f"Session started | IP: {ip}")
+
+def log_activity(action, details='', report_hash=None):
+    if CURRENT_LOG_FILE:
+        entry = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Action: {action} | {details}"
+        if report_hash:
+            entry += f" | Report SHA256: {report_hash}"
+        with open(CURRENT_LOG_FILE, 'a') as f:
+            f.write(entry + '\n')
+
+def close_session_log():
+    global CURRENT_LOG_FILE
+    if CURRENT_LOG_FILE and os.path.exists(CURRENT_LOG_FILE):
+        # Calculate SHA256 of full log file
+        with open(CURRENT_LOG_FILE, 'rb') as f:
+            file_hash = hashlib.sha256(f.read()).hexdigest()
+        with open(CURRENT_LOG_FILE, 'a') as f:
+            f.write(f"\n--- SESSION END --- SHA256: {file_hash}\n")
+        CURRENT_LOG_FILE = None

@@ -1,81 +1,62 @@
-MkweliAML - Sanctions Checker
-=======
-MkweliAML - Simple AML/KYC Tool
-MkweliAML helps check clients against sanctions lists. It runs on your computer. No internet needed after setup. Data stays local. This keeps it private and safe. It is free and open-source. Made for small groups like NGOs. Works on Ubuntu/Linux, Windows, and Mac.
+ MkweliAML
 
-What It Does
+Open-source,Know-Your-Customer(KYC) & Anti-Money-Laundering (AML) financial sanctions screening tool.
+Manually downloaded sanctions lists · Fuzzy name matching.
+Professional PDF reports for donors and Auditors 
 
-* Set up a password to protect access.
+https://github.com/gilbertbouic/Mkweli
 
-* Load sanctions lists from free sources.
+## Features
 
-Troubleshoot: Logs for errors, test with unittest.
-# MkweliAML - Simple AML/KYC Tool
-=======
-* Add client details.
+- Manual loading of UN, UK, OFAC, EU sanctions lists (XML)
+- Fuzzy name + DOB + nationality matching (threshold 82%)
+- Professional PDF screening reports with your organisation details in header
+- SHA256 hash on every generated report (integrity)
+- Detailed per-session activity log with IP, timestamp, action and report SHA256
+- Cross-platform: Ubuntu/Linux, Windows, macOS
+- Docker support for one-command deployment
 
-* Check if clients match lists.
+## Quick Start
 
-* Make reports with proof.
+git clone https://github.com/gilbertbouic/Mkweli.git
+cd Mkweli
+python -m venv venv
 
-* See stats on dashboard.
+# Ubuntu / macOS
+source venv/bin/activate
 
-* Log actions for records.
+# Windows
+venv\Scripts\activate
 
-Get Started
-Follow these steps. They work on Ubuntu/Linux, Windows, or Mac.
+python install_dependencies.py   # creates venv & installs everything
+python init_db.py               # creates database + admin user
+python app.py                   # starts the app.
 
-1. Install Python if needed. Get Python 3 from python.org. It is free.
+Open browser → http://127.0.0.1:5000
+First login: admin / securepassword123 (change immediately in Settings)
+Manual Sanctions Lists Download (REQUIRED)
+The tool now can be used 100% offline.
 
-2. Download the files. Go to github.com/gilbertbouic/Mkweli. Click Code then Download ZIP.
+Download Links: 
+ UN Consolidated List,https://main.un.org/securitycouncil/en/content/un-sc-consolidated-list
+Downloads as : consolidatedLegacyByPRN.xml. Rename - “un_consolidated.xml”
 
-3. Open the folder. Unzip to a new place on your computer.
+ UK Consolidated List: https://www.gov.uk/government/publications/the-uk-sanctions-list
+Downloads as: UK-Sanctions-List.xml. Rename - “uk_consolidated.xml”
 
-4. Set up environment. Open terminal or command prompt. Go to the folder.
+ OFACConsolidatedList,https://sanctionslist.ofac.treas.gov/Home/SdnList 
+Downloads as sdn.xml. Rename - “ofac_consolidated.xml”
 
-   * On Ubuntu/Linux or Mac: Type python3 -m venv venv. Then source venv/bin/activate.
+ EU Consolidated List: https://www.sanctionsmap.eu
+Consolidated lists of financial sanctions → Consolidated Financial Sanctions File 1.0 → Access- download URL.
+Downloads as yyyymmdd-FULL(xsd).xml. Rename - “eu_consolidated.xml”
 
-   * On Windows: Type python -m venv venv. Then venv\Scripts\activate.
+Place all 4 files in the MkweliAML/data folder.
 
-5. Install needed parts. Type pip install -r requirements.txt.
-
-6. Make database. Type python init_db.py.
-
-7. Start the app. Type python app.py. Open browser to http://localhost:5000.
-
-First Use
-
-* Set a strong password. Use at least 8 letters.
-
-* Lists load on their own if online.
-
-* Add a client to test.
-
-How to Use
-
-* Dashboard shows totals.
-
-* Clients: Add name and details. Click check sanctions.
-
-* Lists: Click refresh if needed. Upload files by hand if offline.
-
-* Reports: Pick client and make PDF.
-
-* Settings: Change your group name.
-
-* Help: Read for more tips.
-
-Fix Problems
-
-* See logs/app.log for errors.
-
-* Test parsers: Type python -m unittest tests/test_parsers.py.
-
-* No internet: Use manual upload.
-
-Update Lists
-App loads lists from free places like UN and US sites. It checks for changes.
-Safe and Simple
-No keys to add. Data is local. Clean duplicates to keep small.
-License: Apache-2.0.
-Made by Gilbert Clement Bouic. Help from Grok AI.
+Start the app (python app.py or your run script).
+Login.
+Go to Sanctions Lists page.
+Click Update Lists button.
+The app will parse all 4 files from the /data folder and load into database.
+Screen clients
+Create Reports and Logs with SHA256 validation
