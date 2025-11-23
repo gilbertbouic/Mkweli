@@ -42,7 +42,8 @@
                 data.matches.forEach(match => {
                     const li = document.createElement('li');
                     li.classList.add('list-group-item');
-                    li.textContent = match;
+                    const details = `${match.name} [${match.type}${match.source ? ' - ' + match.source : ''}${match.nationality ? ' - ' + match.nationality : ''}]`;
+                    li.textContent = details;
                     matchList.appendChild(li);
                 });
             } else {

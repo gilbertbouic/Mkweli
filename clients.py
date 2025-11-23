@@ -1,12 +1,14 @@
 # clients.py - Updated to log report with SHA256
-from flask import Blueprint, render_template, request, flash, redirect, url_for, send_file, session
+from flask import Blueprint, render_template, request, flash, redirect, url_for, send_file, session, current_app
 from werkzeug.utils import secure_filename
 from routes import login_required
-from utils import perform_screening, generate_pdf_report, log_activity  # Add log_activity
+from utils import perform_screening, generate_pdf_report, log_activity
 from models import User, UserDetails
+from extensions import db
 import os
 import pandas as pd
 from io import BytesIO
+from datetime import datetime
 
 clients = Blueprint('clients', __name__, template_folder='templates')
 
@@ -28,7 +30,7 @@ def clients_screening():
             return redirect(request.url)
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
             try:
                 if filename.endswith('.csv'):

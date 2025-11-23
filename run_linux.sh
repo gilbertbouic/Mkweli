@@ -1,5 +1,4 @@
 #!/bin/bash
-<<<<<<< HEAD
 if [ ! -d "venv" ]; then
   echo "Creating venv..."
   python3 -m venv venv
@@ -16,4 +15,4 @@ if [ -f venv/bin/activate ]; then
 fi
 
 python3 app.py
->>>>>>> 4bfb9585fdcb6db813b32955452182091acac196
+
