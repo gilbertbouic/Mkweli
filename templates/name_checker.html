@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Name Checker{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="mb-4 fw-bold" style="color: #561217;">MkweliAML Name Checker</h1>
+    <p class="lead">Enter a name to check against sanctions lists.</p>
+    
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form id="nameCheckForm">
+                <div class="mb-3">
+                    <label for="nameInput" class="form-label fw-bold">Enter Name to Check:</label>
+                    <input type="text" class="form-control form-control-lg" id="nameInput" 
+                           placeholder="Enter full name (e.g., Eric Badege)" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg">Check Against Sanctions</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="results" class="mt-4" style="display: none;">
+        <h3>Matches:</h3>
+        <div id="matchResults" class="alert alert-info">
+            No matches found.
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('nameCheckForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const name = document.getElementById('nameInput').value.trim();
+    
+    if (name.length < 2) {
+        alert('Please enter a name with at least 2 characters');
+        return;
+    }
+    
+    // Show loading
+    document.getElementById('matchResults').innerHTML = '<div class="text-center"><div class="spinner-border"></div> Checking...</div>';
+    document.getElementById('results').style.display = 'block';
+    
+    // Call the sanctions check API
+    fetch('/check_sanctions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: name })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            document.getElementById('matchResults').innerHTML = `<div class="alert alert-danger">Error: ${data.error}</div>`;
+        } else if (data.matches && data.matches.length > 0) {
+            let matchesHtml = '<div class="alert alert-warning"><strong>Potential Matches Found:</strong><ul class="mb-0 mt-2">';
+            data.matches.forEach(match => {
+                matchesHtml += `<li><strong>${match.name}</strong> (${match.type}) - ${match.source}${match.nationality ? ' - ' + match.nationality : ''}</li>`;
+            });
+            matchesHtml += '</ul></div>';
+            document.getElementById('matchResults').innerHTML = matchesHtml;
+        } else {
+            document.getElementById('matchResults').innerHTML = '<div class="alert alert-success"><strong>No matches found.</strong> This name does not appear in the current sanctions lists.</div>';
+        }
+    })
+    .catch(error => {
+        document.getElementById('matchResults').innerHTML = `<div class="alert alert-danger">Error checking name: ${error}</div>`;
+    });
+});
+</script>
+{% endblock %}

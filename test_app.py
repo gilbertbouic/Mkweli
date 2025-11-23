@@ -23,7 +23,7 @@ class TestApp(unittest.TestCase):
         self.client = app.test_client()
         with app.app_context():
             db.create_all()
-            user = User(username='test@example.com', password='testpass123')
+            user = User(username='test@example.com', password='TestPass123@#')
             db.session.add(user)
             db.session.commit()
 

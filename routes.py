@@ -39,13 +39,14 @@ def login():
 def logout():
     session.pop('user_id', None)
     flash('Logged out.', 'success')
-    return redirect(url_for('main.index'))
+    return redirect(url_for('auth.login'))  # Changed to redirect to login
 
 main = Blueprint('main', __name__)
 
 @main.route('/')
 def index():
-    return render_template('index.html')
+    # Redirect to login page instead of going directly to client screening
+    return redirect(url_for('auth.login'))
 
 @main.route('/dashboard')
 @login_required
@@ -56,7 +57,7 @@ def dashboard():
 @login_required
 def sanctions_lists():
     data = session.get('sanctions_data', {})
-    return render_template('sanctions_lists.html', data=data)
+    return render_template('screening.html')  # Changed to screening.html
 
 @main.route('/settings', methods=['GET', 'POST'])
 @login_required
@@ -137,6 +138,12 @@ def check_sanctions():
         return jsonify({'matches': matches})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# Add reports route
+@main.route('/reports')
+@login_required
+def reports():
+    return render_template('reports.html')
 
 sanctions = Blueprint('sanctions', __name__)
 
