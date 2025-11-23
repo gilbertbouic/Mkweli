@@ -11,6 +11,65 @@
         Download the latest XML files from official sources, rename them exactly as shown below, and place them in the <code>data/</code> folder.
     </div>
 
+    <!-- File Status Section -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-folder-check"></i> Current Data Files Status</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-file-earmark-xml text-success fs-4 me-3"></i>
+                        <div>
+                            <strong>UN Consolidated</strong><br>
+                            <small class="text-success">File present</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-file-earmark-xml text-success fs-4 me-3"></i>
+                        <div>
+                            <strong>UK Consolidated</strong><br>
+                            <small class="text-success">File present</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-file-earmark-xml text-success fs-4 me-3"></i>
+                        <div>
+                            <strong>OFAC Consolidated</strong><br>
+                            <small class="text-success">File present</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-file-earmark-xml text-success fs-4 me-3"></i>
+                        <div>
+                            <strong>EU Consolidated</strong><br>
+                            <small class="text-success">File present</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Button -->
+    <div class="card mb-5">
+        <div class="card-body text-center">
+            <form method="POST" action="{{ url_for('sanctions.update_lists') }}">
+                <button type="submit" class="btn btn-lg btn-success hover-shadow">
+                    <i class="bi bi-arrow-clockwise"></i> Update Lists from data/ folder
+                </button>
+                <p class="text-muted mt-2 mb-0">Place files in data/ folder and click Update.</p>
+            </form>
+        </div>
+    </div>
+
     <div class="row g-4 mb-5">
         <div class="col-md-6">
             <div class="card border-primary shadow-sm hover-shadow">
@@ -49,45 +108,12 @@
             <div class="card border-danger shadow-sm hover-shadow">
                 <div class="card-body">
                     <h5 class="card-title text-danger">EU Consolidated List</h5>
-                    <p><strong>Link:</strong> <a href="https://www.sanctionsmap.eu" target="_blank">SanctionsMap.eu</a></p>
-                    <p><strong>Download:</strong> Access/Download → Consolidated Financial Sanctions File 1.0 → latest date</p>
+                    <p><strong>Link:</strong> <a href="https://data.europa.eu/data/datasets/consolidated-list-of-persons-groups-and-entities-subject-to-eu-financial-sanctions?locale=en" target="_blank">EU Data Portal</a></p>
+                    <p><strong>Download:</strong> Download XML version</p>
                     <p><strong>Rename to:</strong> <code>eu_consolidated.xml</code></p>
                 </div>
             </div>
-            </div>
         </div>
     </div>
-
-    <hr class="my-5">
-
-    <form method="post" action="{{ url_for('sanctions.update_lists') }}">
-        <button type="submit" class="btn btn-lg btn-success hover-shadow">Update Lists from data/ folder</button>
-    </form>
-
-    {% if data %}
-        <h3 class="mt-5 mb-3">Current Database Status</h3>
-        <div class="table-responsive">
-            <table class="table table-striped table-hover">
-                <thead class="table-dark">
-                    <tr>
-                        <th>File</th>
-                        <th>Status</th>
-                        <th>Records Loaded</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for file, count in data.items() %}
-                    <tr class="{% if count == 0 %}table-danger{% else %}table-success{% endif %}">
-                        <td><code>{{ file }}</code></td>
-                        <td>{% if count > 0 %}Loaded{% else %}Missing/Empty{% endif %}</td>
-                        <td>{{ count }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <p class="text-muted mt-4">Place files in data/ folder and click Update.</p>
-    {% endif %}
 </div>
 {% endblock %}

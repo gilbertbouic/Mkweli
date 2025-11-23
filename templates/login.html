@@ -3,225 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MkweliAML - Login</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <title>MkweliAML Login</title>
     <style>
-        :root {
-            --primary: #2c5aa0;
-            --primary-dark: #1e3d72;
-            --secondary: #f8f9fa;
-            --text: #333;
-            --text-light: #6c757d;
-            --border: #dee2e6;
-            --error: #dc3545;
-            --success: #28a745;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            font-family: Arial, sans-serif;
+            max-width: 400px;
+            margin: 100px auto;
             padding: 20px;
-            line-height: 1.6;
+            background: #f5f5f5;
         }
-        
         .login-container {
             background: white;
-            padding: 3rem;
-            border-radius: 12px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 440px;
-            position: relative;
-        }
-        
-        .logo-section {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        
-        .logo {
-            color: var(--primary);
-            font-size: 2.5rem;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            margin-bottom: 0.5rem;
-        }
-        
-        .tagline {
-            color: var(--text-light);
-            font-size: 1.1rem;
-            font-weight: 400;
-        }
-        
-        .login-form {
-            margin-bottom: 2rem;
-        }
-        
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: var(--text);
-            font-weight: 600;
-            font-size: 0.95rem;
-        }
-        
-        .password-input {
-            width: 100%;
-            padding: 1rem;
-            border: 2px solid var(--border);
+            padding: 30px;
             border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            background: var(--secondary);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        
-        .password-input:focus {
-            outline: none;
-            border-color: var(--primary);
-            background: white;
-            box-shadow: 0 0 0 3px rgba(44, 90, 160, 0.1);
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 10px;
         }
-        
+        .tagline {
+            color: #34495e;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: bold;
+        }
+        .password-field {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
         .unlock-btn {
             width: 100%;
-            padding: 1rem;
-            background: var(--primary);
+            padding: 12px;
+            background: #3498db;
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
+            border-radius: 4px;
+            font-size: 16px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            margin-top: 10px;
+            font-weight: bold;
         }
-        
         .unlock-btn:hover {
-            background: var(--primary-dark);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(44, 90, 160, 0.3);
+            background: #2980b9;
         }
-        
-        .unlock-btn:active {
-            transform: translateY(0);
-        }
-        
-        .security-notice {
+        .security-note {
+            margin-top: 20px;
+            padding: 15px;
             background: #fff3cd;
             border: 1px solid #ffeaa7;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 2rem;
-        }
-        
-        .security-notice strong {
+            border-radius: 4px;
+            font-size: 0.9em;
             color: #856404;
-            display: block;
-            margin-bottom: 0.25rem;
         }
-        
-        .security-notice p {
-            color: #856404;
-            font-size: 0.9rem;
-            margin: 0;
-        }
-        
         .footer {
             text-align: center;
-            color: var(--text-light);
-            font-size: 0.85rem;
-            line-height: 1.5;
+            margin-top: 30px;
+            font-size: 0.8em;
+            color: #7f8c8d;
         }
-        
-        .error-message {
-            background: #f8d7da;
-            color: var(--error);
-            padding: 0.75rem;
-            border-radius: 6px;
-            margin-bottom: 1rem;
-            border: 1px solid #f5c6cb;
+        .error {
+            color: #e74c3c;
             text-align: center;
-            font-size: 0.9rem;
-        }
-        
-        @media (max-width: 480px) {
-            .login-container {
-                padding: 2rem 1.5rem;
-            }
-            
-            .logo {
-                font-size: 2rem;
-            }
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #fadbd8;
+            border-radius: 4px;
         }
     </style>
 </head>
 <body>
     <div class="login-container">
-        <div class="logo-section">
-            <div class="logo">MkweliAML</div>
-            <div class="tagline">Anti-Money Laundering Compliance</div>
-        </div>
-        
-        <div class="login-form">
+        <h1>MkweliAML</h1>
+        <div class="tagline">Anti-Money Laundering Compliance</div>
+
+        <form method="POST" action="/login">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="error">
+                        {% for message in messages %}
+                            {{ message }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            
             <div class="form-group">
-                <label for="masterPassword">MASTER PASSWORD</label>
-                <form method="POST" action="/login">
-                    {% with messages = get_flashed_messages() %}
-                        {% if messages %}
-                            <div class="error-message">
-                                {% for message in messages %}
-                                    {{ message }}
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    {% endwith %}
-                    
-                    <input type="password" 
-                           id="masterPassword" 
-                           name="password" 
-                           class="password-input" 
-                           placeholder="Enter your master password" 
-                           required
-                           autocomplete="current-password">
-                    
-                    <button type="submit" class="unlock-btn">
-                        UNLOCK SYSTEM
-                    </button>
-                </form>
+                <label>MASTER PASSWORD</label>
+                <input type="password" name="password" class="password-field" placeholder="Enter your master password" required>
             </div>
+            
+            <button type="submit" class="unlock-btn">UNLOCK SYSTEM</button>
+        </form>
+
+        <div class="security-note">
+            <strong>SECURITY NOTICE</strong><br>
+            After 5 failed attempts, the system will automatically lock for 30 minutes.
         </div>
-        
-        <div class="security-notice">
-            <strong>SECURITY NOTICE</strong>
-            <p>After 5 failed attempts, the system will automatically lock for 30 minutes.</p>
-        </div>
-        
+
         <div class="footer">
-            <div>MkweliAML © 2023 - Anti-Money Laundering Compliance Tool</div>
-            <div>MkweliAML © 2025</div>
+            MkweliAML © 2025
         </div>
     </div>
-
-    <script>
-        // Add a simple focus effect
-        document.getElementById('masterPassword').focus();
-        
-        // Prevent form resubmission on page refresh
-        if (window.history.replaceState) {
-            window.history.replaceState(null, null, window.location.href);
-        }
-    </script>
 </body>
 </html>

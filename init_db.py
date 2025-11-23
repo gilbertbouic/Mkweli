@@ -11,10 +11,11 @@ def init_database():
             db.session.execute(text("CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(name, alias_name, content='aliases', tokenize='porter')"))
             db.session.commit()
             if not User.query.filter_by(username='admin').first():
-                admin = User(username='admin', password='securepassword123')
+                # Use a password that meets the validation requirements
+                admin = User(username='admin', password='MkweliAML@2025!')
                 db.session.add(admin)
                 db.session.commit()
-            print("DB initialized.")
+            print("DB initialized successfully!")
     except Exception as e:
         print(f"Error: {str(e)}")
 
