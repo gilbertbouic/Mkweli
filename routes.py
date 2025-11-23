@@ -1,11 +1,11 @@
 # routes.py - Defines blueprints/routes. Import forms/models/utils (flat; no app).
-from flask import Blueprint, render_template, redirect, url_for, flash, session, request  # Added: render_template
+from flask import Blueprint, render_template, redirect, url_for, flash, session, request, current_app
 from functools import wraps
-from forms import LoginForm, UserDetailsForm  # Added
+from forms import LoginForm, UserDetailsForm
 from models import User, UserDetails
+from extensions import db
 from utils import update_sanctions_lists
 
-# Decorator: Auth logic (reviewed: Secure session)
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -23,31 +23,19 @@ def login():
     if form.validate_on_submit():
         try:
             user = User.query.filter_by(username=form.username.data).first()
-    if user and user.check_password(form.password.data):
+            if user and user.check_password(form.password.data):
                 session['user_id'] = user.id
-                from utils import start_session_log
-                start_session_log(user.id, request.remote_addr)
                 flash('Login successful!', 'success')
-                # Auto-create user details if not exist
-                if not user.user_details:
-                    user_details = UserDetails(user_id=user.id, org_company='', address='', phone='', tax_reg='')
-                    db.session.add(user_details)
-                    db.session.commit()
                 return redirect(request.args.get('next') or url_for('main.dashboard'))
             flash('Invalid credentials.', 'error')
         except Exception as e:
-            flash('Login error—try again.', 'error')  # User-friendly
-    return render_template('login.html', form=form)  # ARIA: form aria-label="Login form"
+            flash('Login error—try again.', 'error')
+    return render_template('login.html', form=form)
 
 @auth.route('/logout')
 def logout():
-    user_id = session.get('user_id')
-    ip = request.remote_addr
-    from utils import close_session_log
-    if user_id:
-        close_session_log()
     session.pop('user_id', None)
-    flash('Logged out successfully.', 'success')
+    flash('Logged out.', 'success')
     return redirect(url_for('main.index'))
 
 main = Blueprint('main', __name__)
@@ -59,13 +47,93 @@ def index():
 @main.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template('dashboard.html')  # Nav: Home > Sanctions > etc.
+    return render_template('dashboard.html')
 
 @main.route('/sanctions-lists')
 @login_required
 def sanctions_lists():
     data = session.get('sanctions_data', {})
     return render_template('sanctions_lists.html', data=data)
+
+@main.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    user = User.query.get(session['user_id'])
+    form = UserDetailsForm()
+    
+    if form.validate_on_submit():
+        try:
+            if not user.user_details:
+                user_details = UserDetails(
+                    user_id=user.id,
+                    org_company=form.org_company.data,
+                    address=form.address.data,
+                    phone=form.phone.data,
+                    tax_reg=form.tax_reg.data
+                )
+                db.session.add(user_details)
+            else:
+                user.user_details.org_company = form.org_company.data
+                user.user_details.address = form.address.data
+                user.user_details.phone = form.phone.data
+                user.user_details.tax_reg = form.tax_reg.data
+            db.session.commit()
+            flash('Settings saved successfully!', 'success')
+            return redirect(url_for('main.settings'))
+        except ValueError as e:
+            flash(f'Validation error: {str(e)}', 'error')
+        except Exception as e:
+            db.session.rollback()
+            flash('Error saving settings—try again.', 'error')
+    elif request.method == 'GET' and user.user_details:
+        form.org_company.data = user.user_details.org_company
+        form.address.data = user.user_details.address
+        form.phone.data = user.user_details.phone
+        form.tax_reg.data = user.user_details.tax_reg
+    
+    return render_template('settings.html', form=form)
+
+@main.route('/check_sanctions', methods=['POST'])
+def check_sanctions():
+    """Quick name check against sanctions lists (public API)."""
+    from flask import jsonify
+    try:
+        data = request.get_json()
+        if not data or 'name' not in data:
+            return jsonify({'error': 'Name required'}), 400
+        
+        name = data['name'].strip()
+        if not name or len(name) < 2:
+            return jsonify({'error': 'Name too short'}), 400
+        
+        # Simple fuzzy match against individuals and entities
+        from fuzzywuzzy import fuzz
+        from models import Individual, Entity
+        threshold = 82
+        matches = []
+        
+        # Check individuals
+        for individual in Individual.query.all():
+            if individual.name and fuzz.token_set_ratio(name.lower(), individual.name.lower()) >= threshold:
+                matches.append({
+                    'name': individual.name,
+                    'type': 'Individual',
+                    'source': individual.source,
+                    'nationality': individual.nationality
+                })
+        
+        # Check entities
+        for entity in Entity.query.all():
+            if entity.name and fuzz.token_set_ratio(name.lower(), entity.name.lower()) >= threshold:
+                matches.append({
+                    'name': entity.name,
+                    'type': 'Entity',
+                    'source': entity.source
+                })
+        
+        return jsonify({'matches': matches})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 sanctions = Blueprint('sanctions', __name__)
 
