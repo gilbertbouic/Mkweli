@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Client Screening - Mkweli</title>
+</head>
+<body>
+    <h1>Client Sanctions Screening</h1>
+    
+    <form id="screeningForm">
+        <div>
+            <label>Client Name:</label>
+            <input type="text" id="clientName" name="name" required>
+        </div>
+        
+        <div>
+            <label>Client Type:</label>
+            <select id="clientType" name="type">
+                <option value="">Unknown</option>
+                <option value="individual">Individual</option>
+                <option value="company">Company/Organization</option>
+            </select>
+        </div>
+        
+        <button type="submit">Screen Client</button>
+    </form>
+    
+    <div id="results"></div>
+    
+    <script>
+        document.getElementById('screeningForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                name: document.getElementById('clientName').value,
+                type: document.getElementById('clientType').value
+            };
+            
+            const response = await fetch('/check_sanctions', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(formData)
+            });
+            
+            const result = await response.json();
+            displayResults(result);
+        });
+        
+        function displayResults(result) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (result.error) {
+                resultsDiv.innerHTML = `<div style="color: red;">Error: ${result.error}</div>`;
+                return;
+            }
+            
+            let html = `<h3>Results for "${result.client_name}" (${result.client_type})</h3>`;
+            html += `<p>Matches found: ${result.match_count}</p>`;
+            
+            if (result.matches && result.matches.length > 0) {
+                html += '<ul>';
+                result.matches.forEach(match => {
+                    html += `<li>
+                        <strong>${match.matched_name}</strong> (Score: ${match.score.toFixed(1)})
+                        <br><small>Source: ${match.entity.source} | Type: ${match.entity.type}</small>
+                    </li>`;
+                });
+                html += '</ul>';
+            } else {
+                html += '<p style="color: green;">✅ No sanctions matches found</p>';
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

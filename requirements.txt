@@ -14,3 +14,5 @@ fuzzywuzzy==0.18.0
 python-Levenshtein==0.23.0
 odfpy==1.4.1
 pytest==7.4.4
+unidecode==1.3.8
+lxml==5.2.2

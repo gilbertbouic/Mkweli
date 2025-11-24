@@ -5,6 +5,10 @@ from forms import LoginForm, UserDetailsForm
 from models import User, UserDetails
 from extensions import db
 from utils import update_sanctions_lists
+from flask import jsonify
+from datetime import datetime
+from app.sanctions_service import screen_entity, get_sanctions_stats
+from app.sanctions_service import reload_sanctions_data
 
 def login_required(f):
     @wraps(f)
@@ -53,92 +57,57 @@ def index():
 def dashboard():
     return render_template('dashboard.html')
 
-@main.route('/sanctions-lists')
-@login_required
-def sanctions_lists():
-    data = session.get('sanctions_data', {})
-    return render_template('screening.html')  # Changed to screening.html
-
-@main.route('/settings', methods=['GET', 'POST'])
-@login_required
-def settings():
-    user = User.query.get(session['user_id'])
-    form = UserDetailsForm()
-    
-    if form.validate_on_submit():
-        try:
-            if not user.user_details:
-                user_details = UserDetails(
-                    user_id=user.id,
-                    org_company=form.org_company.data,
-                    address=form.address.data,
-                    phone=form.phone.data,
-                    tax_reg=form.tax_reg.data
-                )
-                db.session.add(user_details)
-            else:
-                user.user_details.org_company = form.org_company.data
-                user.user_details.address = form.address.data
-                user.user_details.phone = form.phone.data
-                user.user_details.tax_reg = form.tax_reg.data
-            db.session.commit()
-            flash('Settings saved successfully!', 'success')
-            return redirect(url_for('main.settings'))
-        except ValueError as e:
-            flash(f'Validation error: {str(e)}', 'error')
-        except Exception as e:
-            db.session.rollback()
-            flash('Error saving settings—try again.', 'error')
-    elif request.method == 'GET' and user.user_details:
-        form.org_company.data = user.user_details.org_company
-        form.address.data = user.user_details.address
-        form.phone.data = user.user_details.phone
-        form.tax_reg.data = user.user_details.tax_reg
-    
-    return render_template('settings.html', form=form)
-
 @main.route('/check_sanctions', methods=['POST'])
 def check_sanctions():
-    """Quick name check against sanctions lists (public API)."""
-    from flask import jsonify
+    """Check client against sanctions lists"""
     try:
         data = request.get_json()
-        if not data or 'name' not in data:
-            return jsonify({'error': 'Name required'}), 400
+        client_name = data.get('name', '').strip()
+        client_type = data.get('type', '').strip().lower()  # 'individual' or 'company'
         
-        name = data['name'].strip()
-        if not name or len(name) < 2:
-            return jsonify({'error': 'Name too short'}), 400
+        if not client_name:
+            return jsonify({'error': 'Client name is required'}), 400
         
-        # Simple fuzzy match against individuals and entities
-        from fuzzywuzzy import fuzz
-        from models import Individual, Entity
-        threshold = 82
-        matches = []
+        # Determine entity type for optimal matching
+        entity_type = None
+        if client_type in ['individual', 'person']:
+            entity_type = 'individual'
+        elif client_type in ['company', 'organization', 'corporation', 'business']:
+            entity_type = 'company'
         
-        # Check individuals
-        for individual in Individual.query.all():
-            if individual.name and fuzz.token_set_ratio(name.lower(), individual.name.lower()) >= threshold:
-                matches.append({
-                    'name': individual.name,
-                    'type': 'Individual',
-                    'source': individual.source,
-                    'nationality': individual.nationality
-                })
+        # Screen against sanctions
+        matches = screen_entity(client_name, entity_type, threshold=80)
         
-        # Check entities
-        for entity in Entity.query.all():
-            if entity.name and fuzz.token_set_ratio(name.lower(), entity.name.lower()) >= threshold:
-                matches.append({
-                    'name': entity.name,
-                    'type': 'Entity',
-                    'source': entity.source
-                })
+        result = {
+            'client_name': client_name,
+            'client_type': entity_type or 'unknown',
+            'match_count': len(matches),
+            'matches': matches[:5],  # Return top 5 matches
+            'screening_time': datetime.utcnow().isoformat()
+        }
         
-        return jsonify({'matches': matches})
+        return jsonify(result)
+        
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': f'Screening failed: {str(e)}'}), 500
 
+@main.route('/reload-sanctions', methods=['POST'])
+@login_required
+def reload_sanctions():
+    """Force reload sanctions data after file updates"""
+    try:
+        msg = reload_sanctions_data()
+        flash(msg, 'success')
+    except Exception as e:
+        flash(f'Failed to reload sanctions: {str(e)}', 'error')
+    return redirect(url_for('main.dashboard'))
+
+# Add a new route for sanctions statistics
+@main.route('/sanctions-stats')
+def sanctions_stats():
+    """Get sanctions list statistics"""
+    stats = get_sanctions_stats()
+    return jsonify(stats)
 # Add reports route
 @main.route('/reports')
 @login_required
