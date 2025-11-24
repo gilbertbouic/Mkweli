@@ -1,7 +1,7 @@
 import hashlib
 import secrets
 from datetime import datetime, timedelta
-from database import db
+from .database import db
 
 class AuthSystem:
     def __init__(self):

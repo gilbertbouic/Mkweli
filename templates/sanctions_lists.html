@@ -61,7 +61,7 @@
     <!-- Update Button -->
     <div class="card mb-5">
         <div class="card-body text-center">
-            <form method="POST" action="{{ url_for('sanctions.update_lists') }}">
+            <form method="POST" action="{{ url_for('update_lists') }}">
                 <button type="submit" class="btn btn-lg btn-success hover-shadow">
                     <i class="bi bi-arrow-clockwise"></i> Update Lists from data/ folder
                 </button>
@@ -75,7 +75,7 @@
             <div class="card border-primary shadow-sm hover-shadow">
                 <div class="card-body">
                     <h5 class="card-title text-primary">UN Consolidated List</h5>
-                    <p><strong>Link:</strong> <a href="https://main.un.org/securitycouncil/en/content/un-sc-consolidated-list" target="_blank">UN Security Council</a></p>
+                    <p><strong>Link:</strong> <a href="https://un.org/securitycouncil/en/content/un-sc-consolidated-list" target="_blank">UN Security Council</a></p>
                     <p><strong>Download:</strong> Click XML → file name usually <code>consolidatedLegacyByPRN.xml</code></p>
                     <p><strong>Rename to:</strong> <code>un_consolidated.xml</code></p>
                 </div>

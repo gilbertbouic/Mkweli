@@ -9,8 +9,8 @@ from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 from flask import request
 
-from extensions import db
-from models import Individual, Entity, Alias, Address, Sanction, Log
+from .extensions import db
+from .models import Individual, Entity, Alias, Address, Sanction, Log
 
 logging.basicConfig(level=logging.ERROR)
 
