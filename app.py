@@ -3,11 +3,17 @@
 Mkweli AML Screening System - Robust Version
 """
 import os
+import sys
 from flask import Flask, render_template, redirect, url_for, session, flash, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from functools import wraps
 from datetime import datetime
+
+# Setup path for app folder imports (sanctions parser, fuzzy matcher)
+_app_folder = os.path.join(os.path.dirname(__file__), 'app')
+if _app_folder not in sys.path:
+    sys.path.insert(0, _app_folder)
 
 # Initialize Flask
 app = Flask(__name__)
@@ -106,13 +112,6 @@ def check_sanctions():
             print(f"[DEBUG] Error: Empty client_name received")
             return jsonify({'error': 'Client name is required'}), 400
         
-        # Import parsers from app folder using sys.path
-        import sys
-        import os
-        app_folder = os.path.join(os.path.dirname(__file__), 'app')
-        if app_folder not in sys.path:
-            sys.path.insert(0, app_folder)
-        
         from robust_sanctions_parser import RobustSanctionsParser
         from advanced_fuzzy_matcher import OptimalFuzzyMatcher
         
@@ -162,18 +161,12 @@ def check_sanctions():
 def sanctions_stats():
     """Get sanctions list statistics"""
     try:
-        import sys
-        import os
-        app_folder = os.path.join(os.path.dirname(__file__), 'app')
-        if app_folder not in sys.path:
-            sys.path.insert(0, app_folder)
         from robust_sanctions_parser import RobustSanctionsParser
         parser = RobustSanctionsParser()
         entities = parser.parse_all_sanctions()
         return jsonify({
             'status': 'active',
             'total_entities': len(entities),
-            'entities_loaded': len(entities),
             'message': f'Loaded {len(entities)} sanction entities'
         })
     except Exception as e:
@@ -235,10 +228,6 @@ with app.app_context():
     
     # Initialize sanctions service
     try:
-        import sys
-        app_folder = os.path.join(os.path.dirname(__file__), 'app')
-        if app_folder not in sys.path:
-            sys.path.insert(0, app_folder)
         from robust_sanctions_parser import RobustSanctionsParser
         parser = RobustSanctionsParser()
         entities = parser.parse_all_sanctions()
