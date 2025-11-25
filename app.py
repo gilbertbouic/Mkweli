@@ -3,11 +3,15 @@
 Mkweli AML Screening System - Robust Version
 """
 import os
+import sys
 from flask import Flask, render_template, redirect, url_for, session, flash, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from functools import wraps
 from datetime import datetime
+
+# Add app directory to path for sanctions parser imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
 
 # Initialize Flask
 app = Flask(__name__)
@@ -100,8 +104,6 @@ def check_sanctions():
             return jsonify({'error': 'Client name is required'}), 400
         
         # Use the XML parser directly for better matching
-        import sys
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
         from robust_sanctions_parser import RobustSanctionsParser
         parser = RobustSanctionsParser()
         entities = parser.parse_all_sanctions()
@@ -143,8 +145,6 @@ def check_sanctions():
 def sanctions_stats():
     """Get sanctions list statistics"""
     try:
-        import sys
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
         from robust_sanctions_parser import RobustSanctionsParser
         parser = RobustSanctionsParser()
         entities = parser.parse_all_sanctions()
@@ -192,8 +192,6 @@ with app.app_context():
     
     # Initialize sanctions service
     try:
-        import sys
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
         from robust_sanctions_parser import RobustSanctionsParser
         parser = RobustSanctionsParser()
         entities = parser.parse_all_sanctions()
