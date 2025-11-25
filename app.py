@@ -87,39 +87,52 @@ def clients():
 @app.route('/check_sanctions', methods=['POST'])
 def check_sanctions():
     try:
-        client_name = request.form.get('primary_name', '').strip()
-        client_type = request.form.get('client_type', 'Individual')
+        # Handle both JSON and form data requests
+        if request.is_json:
+            data = request.get_json()
+            client_name = data.get('name', '').strip()
+            client_type = data.get('type', 'individual')
+        else:
+            client_name = request.form.get('client_name', '').strip()
+            client_type = request.form.get('client_type', 'individual')
         
         if not client_name:
             return jsonify({'error': 'Client name is required'}), 400
         
         # Use the XML parser directly for better matching
-        from app.robust_sanctions_parser import RobustSanctionsParser
+        import sys
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
+        from robust_sanctions_parser import RobustSanctionsParser
         parser = RobustSanctionsParser()
         entities = parser.parse_all_sanctions()
         
-        from app.advanced_fuzzy_matcher import OptimalFuzzyMatcher
+        from advanced_fuzzy_matcher import OptimalFuzzyMatcher
         matcher = OptimalFuzzyMatcher(entities)
         
         # Use a lower threshold to catch more matches
-        matches = matcher.find_matches(client_name, threshold=70)
+        raw_matches = matcher.find_matches(client_name, threshold=70)
         
-        # Log the screening
-        screening_result = {
-            'client_name': client_name,
-            'client_type': client_type,
-            'matches_found': len(matches),
-            'matches': matches,
-            'screening_time': datetime.utcnow().isoformat(),
-        }
+        # Format matches for frontend consumption
+        formatted_matches = []
+        for match in raw_matches[:5]:  # Return top 5 matches
+            formatted_matches.append({
+                'matched_name': match.get('primary_name', match.get('name', 'Unknown')),
+                'score': match.get('score', 0),
+                'entity': {
+                    'source': match.get('source', 'Unknown'),
+                    'type': match.get('type', 'unknown'),
+                    'id': match.get('id', ''),
+                    'list_type': match.get('list_type', '')
+                }
+            })
         
-        # Return results
+        # Return results with expected field names for frontend
         return jsonify({
             'client_name': client_name,
             'client_type': client_type,
-            'matches_found': len(matches),
-            'matches': matches[:5],  # Return top 5 matches
-            'screening_time': screening_result['screening_time']
+            'match_count': len(raw_matches),
+            'matches': formatted_matches,
+            'screening_time': datetime.utcnow().isoformat()
         })
         
     except Exception as e:
@@ -131,18 +144,19 @@ def sanctions_stats():
     """Get sanctions list statistics"""
     try:
         import sys
-        sys.path.append('app')
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
         from robust_sanctions_parser import RobustSanctionsParser
         parser = RobustSanctionsParser()
         entities = parser.parse_all_sanctions()
         return jsonify({
             'status': 'active',
-            'entities_loaded': len(entities),
+            'total_entities': len(entities),
             'message': f'Loaded {len(entities)} sanction entities'
         })
     except Exception as e:
         return jsonify({
             'status': 'error',
+            'total_entities': 0,
             'message': f'Error loading sanctions: {str(e)}'
         })
 
@@ -178,9 +192,12 @@ with app.app_context():
     
     # Initialize sanctions service
     try:
-        from app.robust_sanctions_parser import RobustSanctionsParser
-        init_msg = init_sanctions_service()
-        print(f"✅ {init_msg}")
+        import sys
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
+        from robust_sanctions_parser import RobustSanctionsParser
+        parser = RobustSanctionsParser()
+        entities = parser.parse_all_sanctions()
+        print(f"✅ Sanctions service: Loaded {len(entities)} entities")
     except Exception as e:
         print(f"⚠️ Sanctions service: {e}")
         print("📋 The application will run with basic functionality")
