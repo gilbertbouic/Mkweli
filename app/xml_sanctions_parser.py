@@ -326,7 +326,7 @@ class UniversalSanctionsParser:
                     'list_type': entity.get('list_type'),
                     'entity_type': entity.get('type', 'unknown'),
                     'entity_id': entity.get('id'),
-                    'countries': ', '.join(entity.get('countries', [])) if entity.get('countries') else ''
+    'countries': ', '.join([str(c) for c in entity.get('countries', []) if c is not None]) if entity.get('countries') else ''
                 })
         
         return pd.DataFrame(flattened)

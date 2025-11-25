@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """
-Mkweli AML Screening System - Robust Version
+Mkweli AML Screening System - Completely Fixed Version
 """
 import os
+import sys
 from flask import Flask, render_template, redirect, url_for, session, flash, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from functools import wraps
 from datetime import datetime
+
+# Add app directory to path for imports
+sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
 
 # Initialize Flask
 app = Flask(__name__)
@@ -87,39 +91,30 @@ def clients():
 @app.route('/check_sanctions', methods=['POST'])
 def check_sanctions():
     try:
-        client_name = request.form.get('primary_name', '').strip()
+        client_name = request.form.get('client_name', '').strip()
         client_type = request.form.get('client_type', 'Individual')
+        
+        print(f"🔍 Screening: '{client_name}'")
         
         if not client_name:
             return jsonify({'error': 'Client name is required'}), 400
         
-        # Use the XML parser directly for better matching
-        from app.robust_sanctions_parser import RobustSanctionsParser
+        # Use direct imports
+        from robust_sanctions_parser import RobustSanctionsParser
+        from advanced_fuzzy_matcher import OptimalFuzzyMatcher
+        
         parser = RobustSanctionsParser()
         entities = parser.parse_all_sanctions()
-        
-        from app.advanced_fuzzy_matcher import OptimalFuzzyMatcher
         matcher = OptimalFuzzyMatcher(entities)
-        
-        # Use a lower threshold to catch more matches
         matches = matcher.find_matches(client_name, threshold=70)
-        
-        # Log the screening
-        screening_result = {
-            'client_name': client_name,
-            'client_type': client_type,
-            'matches_found': len(matches),
-            'matches': matches,
-            'screening_time': datetime.utcnow().isoformat(),
-        }
         
         # Return results
         return jsonify({
             'client_name': client_name,
             'client_type': client_type,
             'matches_found': len(matches),
-            'matches': matches[:5],  # Return top 5 matches
-            'screening_time': screening_result['screening_time']
+            'matches': matches[:5],
+            'screening_time': datetime.utcnow().isoformat()
         })
         
     except Exception as e:
@@ -130,8 +125,6 @@ def check_sanctions():
 def sanctions_stats():
     """Get sanctions list statistics"""
     try:
-        import sys
-        sys.path.append('app')
         from robust_sanctions_parser import RobustSanctionsParser
         parser = RobustSanctionsParser()
         entities = parser.parse_all_sanctions()
@@ -143,22 +136,13 @@ def sanctions_stats():
     except Exception as e:
         return jsonify({
             'status': 'error',
-            'message': f'Error loading sanctions: {str(e)}'
+            'message': f'Error: {str(e)}'
         })
 
 @app.route('/reports')
 @login_required
 def reports():
     return render_template('reports.html')
-
-# Error handlers
-@app.errorhandler(404)
-def not_found(e):
-    return render_template('error.html', message='Page not found.'), 404
-
-@app.errorhandler(500)
-def server_error(e):
-    return render_template('error.html', message='Internal error—please try again.'), 500
 
 # Initialize application
 with app.app_context():
@@ -175,43 +159,9 @@ with app.app_context():
         print("✅ Admin user created (password: admin123)")
     else:
         print("✅ Admin user already exists")
-    
-    # Initialize sanctions service
-    try:
-        from app.robust_sanctions_parser import RobustSanctionsParser
-        init_msg = init_sanctions_service()
-        print(f"✅ {init_msg}")
-    except Exception as e:
-        print(f"⚠️ Sanctions service: {e}")
-        print("📋 The application will run with basic functionality")
-        print("🔧 Sanctions screening will be available once the service loads")
 
 if __name__ == '__main__':
     print("🚀 Starting Mkweli AML Screening System...")
     print("📍 Access at: http://localhost:5000")
     print("🔑 Login with password: admin123")
     app.run(debug=True, host='0.0.0.0', port=5000)
-
-@app.route('/sanctions-lists')
-@login_required
-def sanctions_lists():
-    """Sanctions lists management page"""
-    return render_template('sanctions_lists.html')
-
-@app.route('/screening')
-@login_required
-def screening():
-    """Client screening page"""
-    return render_template('screening.html')
-
-@app.route('/settings')
-@login_required
-def settings():
-    """Application settings"""
-    return render_template('settings.html')
-
-@app.route('/help')
-@login_required
-def help_page():
-    """Help documentation"""
-    return render_template('help.html')

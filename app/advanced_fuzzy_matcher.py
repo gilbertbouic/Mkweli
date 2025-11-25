@@ -1,264 +1,181 @@
-import pandas as pd
-from fuzzywuzzy import fuzz, process
-from thefuzz import process as thefuzz_process
+"""
+Advanced Fuzzy Matching for Sanctions Screening
+"""
+from thefuzz import fuzz, process as thefuzz_process
 import re
-from typing import List, Dict, Any, Tuple, Optional
-import logging
-from unidecode import unidecode
-import numpy as np
-from collections import defaultdict
-
-logger = logging.getLogger(__name__)
+from typing import List, Dict, Any
 
 class OptimalFuzzyMatcher:
-    """
-    Optimal fuzzy matching for sanctions screening with multiple strategies
-    and configurable thresholds for different use cases
-    """
-    
-    def __init__(self, sanctions_data: List[Dict[str, Any]]):
+    def __init__(self, sanctions_data: List[Dict]):
         self.sanctions_data = sanctions_data
-        self.name_index = self._build_name_index()
-        self.entity_groups = self._group_entities()
+        # Use primary_name as the main name field
+        self.name_key = 'primary_name'
         
-    def _build_name_index(self) -> List[Tuple[str, Dict]]:
-        """Build index of all names for efficient matching"""
-        index = []
-        
-        for entity in self.sanctions_data:
-            for name in entity.get('names', []):
-                if name and pd.notna(name):
-                    normalized = self._normalize_name(name)
-                    if normalized:  # Only add if normalization produces result
-                        index.append((normalized, {
-                            'original_name': name,
-                            'entity': entity,
-                            'source': entity.get('source'),
-                            'list_type': entity.get('list_type')
-                        }))
-        
-        logger.info(f"Built index with {len(index)} normalized names")
-        return index
+        if sanctions_data:
+            # Filter out garbage entities during initialization
+            self.clean_entities = self._filter_garbage_entities(sanctions_data)
+            self.names = [entity[self.name_key].lower().strip() 
+                         for entity in self.clean_entities 
+                         if entity.get(self.name_key)]
+            print(f"✅ Cleaned {len(self.clean_entities)} entities (removed {len(sanctions_data) - len(self.clean_entities)} garbage entries)")
+        else:
+            self.clean_entities = []
+            self.names = []
     
-    def _group_entities(self) -> Dict[str, List]:
-        """Group entities by their primary identifier"""
-        groups = defaultdict(list)
-        for entity in self.sanctions_data:
-            primary_name = entity.get('primary_name')
-            if primary_name:
-                groups[primary_name].append(entity)
-        return groups
-    
-    def _normalize_name(self, name: str) -> str:
-        """Advanced name normalization for optimal matching"""
-        if not name or pd.isna(name):
-            return ""
-            
-        # Basic cleaning
-        name = str(name).lower().strip()
+    def _filter_garbage_entities(self, entities: List[Dict]) -> List[Dict]:
+        """Filter out garbage entities that are parsing artifacts"""
+        clean_entities = []
         
-        # Remove accents and special characters
-        name = unidecode(name)
-        
-        # Remove common legal entities and suffixes with word boundaries
-        legal_entities = [
-            'ltd', 'limited', 'inc', 'incorporated', 'corp', 'corporation',
-            'llc', 'gmbh', 'sa', 'nv', 'plc', 'co', 'company', 'group',
-            'holding', 'enterprises', 'international', 'global'
+        # Common garbage patterns to exclude
+        garbage_patterns = [
+            r'^[A-Za-z]$',  # Single letters
+            r'^[0-9]$',     # Single digits
+            r'^\W+$',       # Only symbols
+            r'^.{1,2}$',    # 1-2 character strings
         ]
         
-        for entity in legal_entities:
-            # Use word boundaries to avoid removing parts of words
-            name = re.sub(r'\b' + re.escape(entity) + r'\b', '', name)
-        
-        # Remove punctuation and extra spaces
-        name = re.sub(r'[^\w\s]', ' ', name)
-        name = re.sub(r'\s+', ' ', name).strip()
-        
-        # Remove common stop words that don't help matching
-        stop_words = {'the', 'and', 'of', 'for', 'with', 'from', 'to', 'in', 'a', 'an'}
-        words = [w for w in name.split() if w not in stop_words and len(w) > 1]
-        
-        # Sort words for consistent token order (improves token-based matching)
-        words_sorted = sorted(words)
-        
-        return ' '.join(words_sorted)
-    
-    def match_single_name(self, 
-                         search_name: str, 
-                         threshold: int = 85,
-                         strategy: str = 'optimal') -> List[Dict[str, Any]]:
-        """
-        Match a single name against sanctions list
-        
-        Args:
-            search_name: Name to search for
-            threshold: Minimum match score (0-100)
-            strategy: 'optimal', 'strict', 'lenient', or 'company'
-        """
-        if not search_name or pd.isna(search_name):
-            return []
-            
-        # Apply strategy-specific settings
-        threshold, algorithms = self._get_strategy_config(strategy, threshold)
-        normalized_search = self._normalize_name(search_name)
-        
-        if not normalized_search:
-            return []
-        
-        matches = []
-        seen_entities = set()
-        
-        for normalized_db_name, name_info in self.name_index:
-            scores = self._calculate_match_scores(normalized_search, normalized_db_name, algorithms)
-            weighted_score = self._calculate_weighted_score(scores, strategy)
-            
-            if weighted_score >= threshold:
-                entity_id = id(name_info['entity'])
-                if entity_id not in seen_entities:
-                    seen_entities.add(entity_id)
-                    
-                    match_info = {
-                        'entity': name_info['entity'],
-                        'score': weighted_score,
-                        'matched_name': name_info['original_name'],
-                        'search_name': search_name,
-                        'normalized_search': normalized_search,
-                        'strategy': strategy,
-                        'detailed_scores': scores
-                    }
-                    matches.append(match_info)
-        
-        # Sort by score descending
-        matches.sort(key=lambda x: x['score'], reverse=True)
-        return matches
-    
-    def _get_strategy_config(self, strategy: str, base_threshold: int) -> Tuple[int, List[str]]:
-        """Get configuration for different matching strategies"""
-        strategies = {
-            'strict': {
-                'threshold': max(base_threshold, 90),
-                'algorithms': ['token_sort', 'partial', 'token_set']
-            },
-            'optimal': {
-                'threshold': base_threshold,
-                'algorithms': ['token_sort', 'partial', 'ratio', 'token_set']
-            },
-            'lenient': {
-                'threshold': min(base_threshold, 75),
-                'algorithms': ['partial', 'token_sort', 'ratio']
-            },
-            'company': {
-                'threshold': base_threshold,
-                'algorithms': ['token_sort', 'partial_company', 'token_set']
-            }
+        # Common stop words and garbage terms
+        garbage_terms = {
+            'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 
+            'of', 'with', 'by', 'as', 'is', 'was', 'were', 'be', 'been', 'being',
+            'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+            'should', 'may', 'might', 'must', 'can', 'it', 'its', 'they', 'them',
+            'their', 'this', 'that', 'these', 'those', 'from', 'into', 'through',
+            'during', 'before', 'after', 'above', 'below', 'up', 'down', 'out',
+            'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here',
+            'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each',
+            'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not',
+            'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'now'
         }
-        
-        config = strategies.get(strategy, strategies['optimal'])
-        return config['threshold'], config['algorithms']
-    
-    def _calculate_match_scores(self, search: str, target: str, algorithms: List[str]) -> Dict[str, float]:
-        """Calculate multiple fuzzy matching scores"""
-        scores = {}
-        
-        for algorithm in algorithms:
-            if algorithm == 'token_sort':
-                scores[algorithm] = fuzz.token_sort_ratio(search, target)
-            elif algorithm == 'token_set':
-                scores[algorithm] = fuzz.token_set_ratio(search, target)
-            elif algorithm == 'partial':
-                scores[algorithm] = fuzz.partial_ratio(search, target)
-            elif algorithm == 'ratio':
-                scores[algorithm] = fuzz.ratio(search, target)
-            elif algorithm == 'partial_company':
-                # Enhanced partial matching for company names
-                scores[algorithm] = self._partial_company_match(search, target)
-        
-        return scores
-    
-    def _partial_company_match(self, search: str, target: str) -> float:
-        """Enhanced partial matching optimized for company names"""
-        # Check for acronym matches
-        search_acronym = ''.join([word[0] for word in search.split() if word])
-        target_acronym = ''.join([word[0] for word in target.split() if word])
-        
-        if search_acronym and target_acronym and len(search_acronym) > 1:
-            acronym_score = fuzz.ratio(search_acronym, target_acronym)
-        else:
-            acronym_score = 0
-        
-        # Use the best of partial ratio and acronym score
-        partial_score = fuzz.partial_ratio(search, target)
-        return max(partial_score, acronym_score * 0.8)  # Weight acronym matches slightly lower
-    
-    def _calculate_weighted_score(self, scores: Dict[str, float], strategy: str) -> float:
-        """Calculate weighted score based on strategy"""
-        weights = {
-            'strict': {'token_sort': 0.4, 'partial': 0.3, 'token_set': 0.3},
-            'optimal': {'token_sort': 0.5, 'partial': 0.2, 'ratio': 0.2, 'token_set': 0.1},
-            'lenient': {'partial': 0.6, 'token_sort': 0.3, 'ratio': 0.1},
-            'company': {'token_sort': 0.6, 'partial_company': 0.4}
-        }
-        
-        weight_config = weights.get(strategy, weights['optimal'])
-        weighted_score = 0
-        
-        for algorithm, score in scores.items():
-            if algorithm in weight_config:
-                weighted_score += score * weight_config[algorithm]
-        
-        return min(100, weighted_score)  # Cap at 100
-    
-    def batch_screen_entities(self, 
-                            entities: List[Dict[str, Any]], 
-                            threshold: int = 85,
-                            strategy: str = 'optimal') -> Dict[str, List[Dict]]:
-        """
-        Screen multiple entities at once with different strategies for individuals vs companies
-        
-        Args:
-            entities: List of entities with 'name' and optionally 'type' fields
-            threshold: Base threshold
-            strategy: Default strategy
-        """
-        results = {}
         
         for entity in entities:
-            entity_name = entity.get('name')
-            entity_type = entity.get('type', 'unknown').lower()
+            primary_name = entity.get(self.name_key, '')
             
-            # Choose strategy based on entity type
-            if entity_type in ['company', 'organization', 'corporation']:
-                match_strategy = 'company'
-            elif entity_type in ['individual', 'person']:
-                match_strategy = 'strict'  # Be more strict with individuals
-            else:
-                match_strategy = strategy
+            # Skip if no name
+            if not primary_name or not primary_name.strip():
+                continue
             
-            matches = self.match_single_name(entity_name, threshold, match_strategy)
-            if matches:
-                results[entity_name] = {
-                    'matches': matches,
-                    'strategy_used': match_strategy,
-                    'entity_type': entity_type
-                }
+            name_clean = primary_name.strip()
+            
+            # Skip if it matches garbage patterns
+            is_garbage = False
+            for pattern in garbage_patterns:
+                if re.match(pattern, name_clean):
+                    is_garbage = True
+                    break
+            
+            # Skip common stop words
+            if name_clean.lower() in garbage_terms:
+                is_garbage = True
+            
+            # Skip names that are too short and not meaningful
+            if len(name_clean) <= 2:
+                is_garbage = True
+            
+            # Skip names that are mostly symbols or numbers
+            symbol_count = sum(1 for char in name_clean if not char.isalnum() and not char.isspace())
+            if symbol_count > len(name_clean) * 0.5:  # More than 50% symbols
+                is_garbage = True
+            
+            # Skip very long text that's likely descriptive paragraphs
+            if len(name_clean) > 100:
+                is_garbage = True
+            
+            # Skip text that contains multiple sentences or paragraph markers
+            if re.search(r'[.!?]\s+[A-Z]', name_clean):  # Multiple sentences
+                is_garbage = True
+            
+            # Skip text that looks like addresses or descriptions
+            descriptive_indicators = [
+                'principal place of business',
+                'place of registration', 
+                'associated individual',
+                'photo available',
+                'date of birth',
+                'passport number',
+                'address:',
+                'tel:',
+                'fax:',
+                'email:'
+            ]
+            
+            if any(indicator in name_clean.lower() for indicator in descriptive_indicators):
+                is_garbage = True
+            
+            if not is_garbage:
+                clean_entities.append(entity)
         
-        return results
+        return clean_entities
     
-    def get_matching_stats(self) -> Dict[str, Any]:
+    def find_matches(self, name: str, threshold: int = 75, limit: int = 10) -> List[Dict]:
+        """Find fuzzy matches with multiple matching strategies"""
+        if not name or not name.strip() or not self.names:
+            return []
+        
+        name_clean = name.lower().strip()
+        all_matches = []
+        
+        # Strategy 1: Direct fuzzy matching
+        try:
+            direct_matches = thefuzz_process.extract(name_clean, self.names, limit=limit*2, scorer=fuzz.token_sort_ratio)
+            all_matches.extend(direct_matches)
+        except Exception as e:
+            print(f"⚠️ Direct matching error: {e}")
+        
+        # Strategy 2: Partial matching for substrings
+        try:
+            partial_matches = thefuzz_process.extract(name_clean, self.names, limit=limit, scorer=fuzz.partial_ratio)
+            all_matches.extend(partial_matches)
+        except Exception as e:
+            print(f"⚠️ Partial matching error: {e}")
+        
+        # Strategy 3: Token set ratio (order independent)
+        try:
+            token_matches = thefuzz_process.extract(name_clean, self.names, limit=limit, scorer=fuzz.token_set_ratio)
+            all_matches.extend(token_matches)
+        except Exception as e:
+            print(f"⚠️ Token matching error: {e}")
+        
+        # Remove duplicates and filter by threshold
+        unique_matches = {}
+        for match_name, score in all_matches:
+            if (score >= threshold and 
+                match_name not in unique_matches and
+                len(match_name) > 2):  # Additional length filter
+                unique_matches[match_name] = score
+        
+        # Convert to result format
+        results = []
+        for match_name, score in unique_matches.items():
+            # Find the original entity data
+            original_entity = next(
+                (entity for entity in self.clean_entities 
+                 if entity.get(self.name_key, '').lower().strip() == match_name),
+                None
+            )
+            
+            if original_entity:
+                results.append({
+                    'name': original_entity.get(self.name_key, 'Unknown'),
+                    'primary_name': original_entity.get(self.name_key, 'Unknown'),
+                    'score': score,
+                    'source': original_entity.get('source', 'Unknown'),
+                    'type': original_entity.get('type', 'Entity'),
+                    'countries': original_entity.get('countries', []),
+                    'id': original_entity.get('id', ''),
+                    'list_type': original_entity.get('list_type', '')
+                })
+        
+        # Sort by score descending
+        results.sort(key=lambda x: x['score'], reverse=True)
+        return results[:limit]
+    
+    def get_matching_stats(self):
         """Get statistics about the matching system"""
-        total_entities = len(self.sanctions_data)
-        total_names = len(self.name_index)
-        
-        # Count by list type
-        list_counts = defaultdict(int)
-        for entity in self.sanctions_data:
-            list_type = entity.get('list_type', 'unknown')
-            list_counts[list_type] += 1
-        
         return {
-            'total_entities': total_entities,
-            'total_names': total_names,
-            'entities_by_list': dict(list_counts),
-            'average_names_per_entity': total_names / total_entities if total_entities > 0 else 0
+            'total_entities': len(self.sanctions_data),
+            'clean_entities': len(self.clean_entities),
+            'garbage_removed': len(self.sanctions_data) - len(self.clean_entities),
+            'unique_names': len(self.names),
+            'matching_strategies': ['token_sort_ratio', 'partial_ratio', 'token_set_ratio']
         }
