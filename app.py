@@ -87,56 +87,92 @@ def clients():
 @app.route('/check_sanctions', methods=['POST'])
 def check_sanctions():
     try:
-        client_name = request.form.get('primary_name', '').strip()
-        client_type = request.form.get('client_type', 'Individual')
+        # Handle both JSON and form data
+        if request.is_json:
+            data = request.get_json()
+            client_name = data.get('name', '').strip()
+            client_type = data.get('type', 'Individual')
+        else:
+            client_name = request.form.get('primary_name', '').strip()
+            client_type = request.form.get('client_type', 'Individual')
+        
+        # Log incoming request for debugging
+        print(f"[DEBUG] Received screening request:")
+        print(f"  - Content-Type: {request.content_type}")
+        print(f"  - Client name: '{client_name}'")
+        print(f"  - Client type: '{client_type}'")
         
         if not client_name:
+            print(f"[DEBUG] Error: Empty client_name received")
             return jsonify({'error': 'Client name is required'}), 400
         
-        # Use the XML parser directly for better matching
-        from app.robust_sanctions_parser import RobustSanctionsParser
+        # Import parsers from app folder using sys.path
+        import sys
+        import os
+        app_folder = os.path.join(os.path.dirname(__file__), 'app')
+        if app_folder not in sys.path:
+            sys.path.insert(0, app_folder)
+        
+        from robust_sanctions_parser import RobustSanctionsParser
+        from advanced_fuzzy_matcher import OptimalFuzzyMatcher
+        
+        # Parse sanctions data
         parser = RobustSanctionsParser()
         entities = parser.parse_all_sanctions()
+        print(f"[DEBUG] Loaded {len(entities)} sanctions entities")
         
-        from app.advanced_fuzzy_matcher import OptimalFuzzyMatcher
+        # Perform fuzzy matching
         matcher = OptimalFuzzyMatcher(entities)
-        
-        # Use a lower threshold to catch more matches
         matches = matcher.find_matches(client_name, threshold=70)
+        print(f"[DEBUG] Found {len(matches)} matches for '{client_name}'")
         
-        # Log the screening
-        screening_result = {
-            'client_name': client_name,
-            'client_type': client_type,
-            'matches_found': len(matches),
-            'matches': matches,
-            'screening_time': datetime.utcnow().isoformat(),
-        }
+        screening_time = datetime.utcnow().isoformat()
+        
+        # Transform matches to match the frontend expected format
+        formatted_matches = []
+        for match in matches[:5]:
+            formatted_matches.append({
+                'matched_name': match.get('primary_name') or match.get('name', 'Unknown'),
+                'score': match.get('score', 0),
+                'entity': {
+                    'source': match.get('source', 'Unknown'),
+                    'type': match.get('type', 'entity'),
+                    'list_type': match.get('list_type', ''),
+                    'id': match.get('id', '')
+                }
+            })
         
         # Return results
         return jsonify({
             'client_name': client_name,
             'client_type': client_type,
-            'matches_found': len(matches),
-            'matches': matches[:5],  # Return top 5 matches
-            'screening_time': screening_result['screening_time']
+            'match_count': len(matches),
+            'matches': formatted_matches,
+            'screening_time': screening_time
         })
         
     except Exception as e:
-        print(f"Error in sanctions check: {e}")
-        return jsonify({'error': 'Screening failed'}), 500
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"[DEBUG] Error in sanctions check: {e}")
+        print(f"[DEBUG] Traceback: {error_details}")
+        return jsonify({'error': f'Screening failed: {str(e)}'}), 500
 
 @app.route('/sanctions-stats')
 def sanctions_stats():
     """Get sanctions list statistics"""
     try:
         import sys
-        sys.path.append('app')
+        import os
+        app_folder = os.path.join(os.path.dirname(__file__), 'app')
+        if app_folder not in sys.path:
+            sys.path.insert(0, app_folder)
         from robust_sanctions_parser import RobustSanctionsParser
         parser = RobustSanctionsParser()
         entities = parser.parse_all_sanctions()
         return jsonify({
             'status': 'active',
+            'total_entities': len(entities),
             'entities_loaded': len(entities),
             'message': f'Loaded {len(entities)} sanction entities'
         })
@@ -150,6 +186,27 @@ def sanctions_stats():
 @login_required
 def reports():
     return render_template('reports.html')
+
+@app.route('/debug/echo', methods=['GET', 'POST'])
+def debug_echo():
+    """Debug endpoint that echoes back request details"""
+    result = {
+        'method': request.method,
+        'content_type': request.content_type,
+        'headers': dict(request.headers),
+        'args': dict(request.args),
+        'form': dict(request.form),
+    }
+    
+    if request.is_json:
+        try:
+            result['json'] = request.get_json()
+        except Exception as e:
+            result['json_error'] = str(e)
+    else:
+        result['json'] = None
+    
+    return jsonify(result)
 
 # Error handlers
 @app.errorhandler(404)
@@ -178,9 +235,14 @@ with app.app_context():
     
     # Initialize sanctions service
     try:
-        from app.robust_sanctions_parser import RobustSanctionsParser
-        init_msg = init_sanctions_service()
-        print(f"✅ {init_msg}")
+        import sys
+        app_folder = os.path.join(os.path.dirname(__file__), 'app')
+        if app_folder not in sys.path:
+            sys.path.insert(0, app_folder)
+        from robust_sanctions_parser import RobustSanctionsParser
+        parser = RobustSanctionsParser()
+        entities = parser.parse_all_sanctions()
+        print(f"✅ Sanctions service loaded {len(entities)} entities")
     except Exception as e:
         print(f"⚠️ Sanctions service: {e}")
         print("📋 The application will run with basic functionality")
