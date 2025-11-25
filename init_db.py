@@ -1,23 +1,34 @@
-# init_db.py - CLI: Creates DB/tables/user. Run: python init_db.py (all OS).
-from extensions import db  # From extensions (avoids cycle)
-from app import app  # Safe now
-from models import User
-from sqlalchemy import text  # For textual SQL
+#!/usr/bin/env python3
+"""
+Initialize the database
+"""
+import os
+import sys
+
+# Add the current directory to Python path
+sys.path.append(os.path.dirname(__file__))
+
+# Import the main app from app.py (not from app/ directory)
+from app import app, db, User  # Import from app.py in the root directory
 
 def init_database():
-    try:
-        with app.app_context():
-            db.create_all()  # Creates if missing
-            db.session.execute(text("CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(name, alias_name, content='aliases', tokenize='porter')"))
+    """Initialize the database"""
+    with app.app_context():
+        # Create all tables
+        db.create_all()
+        print("✅ Database tables created successfully")
+        
+        # Create admin user if it doesn't exist
+        from werkzeug.security import generate_password_hash
+        
+        admin = User.query.filter_by(username='admin').first()
+        if not admin:
+            admin = User(username='admin', password_hash=generate_password_hash('admin123'))
+            db.session.add(admin)
             db.session.commit()
-            if not User.query.filter_by(username='admin').first():
-                # Use a password that meets the validation requirements
-                admin = User(username='admin', password='MkweliAML@2025!')
-                db.session.add(admin)
-                db.session.commit()
-            print("DB initialized successfully!")
-    except Exception as e:
-        print(f"Error: {str(e)}")
+            print("✅ Admin user created (password: admin123)")
+        else:
+            print("✅ Admin user already exists")
 
 if __name__ == '__main__':
     init_database()

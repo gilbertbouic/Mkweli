@@ -1,44 +1,39 @@
 #!/usr/bin/env python3
 """
-Mkweli AML Screening System - Robust Version
+Complete Mkweli AML System - Fixed Version
 """
+import sys
 import os
+sys.path.append(os.path.dirname(__file__))
+sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
+
 from flask import Flask, render_template, redirect, url_for, session, flash, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+from functools import wraps
 
 # Initialize Flask
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'mkweli-secure-key-2025')
+app.config['SECRET_KEY'] = 'mkweli-secure-key-2025'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mkweli.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = 'uploads'
 
-# Ensure directories exist
-os.makedirs('uploads', exist_ok=True)
-os.makedirs('instance', exist_ok=True)
-
-# Initialize database
 db = SQLAlchemy(app)
-migrate = Migrate(app, db)
 
-# Define models
+# Models
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(120), nullable=False)
     
     def check_password(self, password):
-        from werkzeug.security import check_password_hash
         return check_password_hash(self.password_hash, password)
 
 class Client(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
-    type = db.Column(db.String(50))  # individual or company
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    type = db.Column(db.String(50))
 
 # Login required decorator
 def login_required(f):
@@ -84,54 +79,50 @@ def clients():
     clients_list = Client.query.all()
     return render_template('clients.html', clients=clients_list)
 
+@app.route('/reports')
+@login_required
+def reports():
+    return render_template('reports.html')
+
 @app.route('/check_sanctions', methods=['POST'])
+@login_required
 def check_sanctions():
     try:
-        client_name = request.form.get('primary_name', '').strip()
+        # FIX: Use 'client_name' not 'primary_name'
+        client_name = request.form.get('client_name', '').strip()
         client_type = request.form.get('client_type', 'Individual')
+        
+        print(f"🔍 Screening request: '{client_name}' (type: {client_type})")
         
         if not client_name:
             return jsonify({'error': 'Client name is required'}), 400
         
-        # Use the XML parser directly for better matching
-        from app.robust_sanctions_parser import RobustSanctionsParser
+        # Import and use the sanctions system
+        from robust_sanctions_parser import RobustSanctionsParser
+        from advanced_fuzzy_matcher import OptimalFuzzyMatcher
+        
         parser = RobustSanctionsParser()
         entities = parser.parse_all_sanctions()
-        
-        from app.advanced_fuzzy_matcher import OptimalFuzzyMatcher
         matcher = OptimalFuzzyMatcher(entities)
-        
-        # Use a lower threshold to catch more matches
         matches = matcher.find_matches(client_name, threshold=70)
         
-        # Log the screening
-        screening_result = {
-            'client_name': client_name,
-            'client_type': client_type,
-            'matches_found': len(matches),
-            'matches': matches,
-            'screening_time': datetime.utcnow().isoformat(),
-        }
+        print(f"✅ Found {len(matches)} matches for '{client_name}'")
         
-        # Return results
         return jsonify({
             'client_name': client_name,
             'client_type': client_type,
             'matches_found': len(matches),
-            'matches': matches[:5],  # Return top 5 matches
-            'screening_time': screening_result['screening_time']
+            'matches': matches[:5],
+            'screening_time': datetime.utcnow().isoformat()
         })
         
     except Exception as e:
-        print(f"Error in sanctions check: {e}")
-        return jsonify({'error': 'Screening failed'}), 500
+        print(f"❌ Screening error: {e}")
+        return jsonify({'error': f'Screening failed: {str(e)}'}), 500
 
 @app.route('/sanctions-stats')
 def sanctions_stats():
-    """Get sanctions list statistics"""
     try:
-        import sys
-        sys.path.append('app')
         from robust_sanctions_parser import RobustSanctionsParser
         parser = RobustSanctionsParser()
         entities = parser.parse_all_sanctions()
@@ -141,32 +132,11 @@ def sanctions_stats():
             'message': f'Loaded {len(entities)} sanction entities'
         })
     except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': f'Error loading sanctions: {str(e)}'
-        })
+        return jsonify({'status': 'error', 'message': str(e)})
 
-@app.route('/reports')
-@login_required
-def reports():
-    return render_template('reports.html')
-
-# Error handlers
-@app.errorhandler(404)
-def not_found(e):
-    return render_template('error.html', message='Page not found.'), 404
-
-@app.errorhandler(500)
-def server_error(e):
-    return render_template('error.html', message='Internal error—please try again.'), 500
-
-# Initialize application
+# Initialize database
 with app.app_context():
-    # Create database tables
     db.create_all()
-    
-    # Create admin user if doesn't exist
-    from werkzeug.security import generate_password_hash
     admin = User.query.filter_by(username='admin').first()
     if not admin:
         admin = User(username='admin', password_hash=generate_password_hash('admin123'))
@@ -175,43 +145,9 @@ with app.app_context():
         print("✅ Admin user created (password: admin123)")
     else:
         print("✅ Admin user already exists")
-    
-    # Initialize sanctions service
-    try:
-        from app.robust_sanctions_parser import RobustSanctionsParser
-        init_msg = init_sanctions_service()
-        print(f"✅ {init_msg}")
-    except Exception as e:
-        print(f"⚠️ Sanctions service: {e}")
-        print("📋 The application will run with basic functionality")
-        print("🔧 Sanctions screening will be available once the service loads")
 
 if __name__ == '__main__':
-    print("🚀 Starting Mkweli AML Screening System...")
-    print("📍 Access at: http://localhost:5000")
-    print("🔑 Login with password: admin123")
+    print("🚀 Starting Mkweli AML System...")
+    print("📍 http://localhost:5000")
+    print("🔑 Login with: admin123")
     app.run(debug=True, host='0.0.0.0', port=5000)
-
-@app.route('/sanctions-lists')
-@login_required
-def sanctions_lists():
-    """Sanctions lists management page"""
-    return render_template('sanctions_lists.html')
-
-@app.route('/screening')
-@login_required
-def screening():
-    """Client screening page"""
-    return render_template('screening.html')
-
-@app.route('/settings')
-@login_required
-def settings():
-    """Application settings"""
-    return render_template('settings.html')
-
-@app.route('/help')
-@login_required
-def help_page():
-    """Help documentation"""
-    return render_template('help.html')

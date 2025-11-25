@@ -10,7 +10,7 @@ def test_system():
     print("🚀 Testing Sanctions System...")
     
     # Load sanctions
-    loader = SanctionsLoader('data')
+    loader = SanctionsLoader()
     sanctions = loader.load_all_sanctions()
     
     print(f"📊 Loaded {len(sanctions)} sanction entities")
