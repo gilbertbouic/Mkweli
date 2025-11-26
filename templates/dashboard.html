@@ -13,6 +13,10 @@
         <h3>Sanctions Data</h3>
         <div class="stat-number" id="total-entities">Loading...</div>
         <p>Entities loaded</p>
+        <p class="date-loaded" id="date-loaded">Loading...</p>
+        <button class="btn btn-sm btn-reload" id="reloadSanctionsBtn" style="margin-top: 10px;">
+            <i class="fas fa-sync-alt"></i> Reload Sanctions
+        </button>
     </div>
     <div class="stat-card">
         <h3>Today's Screenings</h3>
@@ -26,6 +30,9 @@
         <h3>This Month</h3>
         <div class="stat-number" id="month-screenings">0</div>
         <p>Screenings this month</p>
+        <button class="btn btn-sm btn-outline" id="clearMonthBtn" style="margin-top: 10px; display: none;">
+            <i class="fas fa-trash"></i> Clear This Month
+        </button>
     </div>
     <div class="stat-card">
         <h3>System Status</h3>
@@ -59,7 +66,7 @@
 </div>
 
 <script>
-// Load sanctions stats
+// Load sanctions stats and last loaded date
 function loadSanctionsStats() {
     fetch('/api/dashboard/sanctions-count')
         .then(response => response.json())
@@ -71,6 +78,20 @@ function loadSanctionsStats() {
         .catch(error => {
             document.getElementById('total-entities').textContent = 'Error';
         });
+    
+    // Load last loaded date
+    fetch('/api/sanctions/last-loaded')
+        .then(response => response.json())
+        .then(data => {
+            if (data.formatted) {
+                document.getElementById('date-loaded').textContent = 'Loaded ' + data.formatted;
+            } else {
+                document.getElementById('date-loaded').textContent = 'Not loaded yet';
+            }
+        })
+        .catch(error => {
+            document.getElementById('date-loaded').textContent = 'Unknown';
+        });
 }
 
 // Load screening stats
@@ -81,9 +102,17 @@ function loadScreeningStats() {
             document.getElementById('today-screenings').textContent = data.today || 0;
             document.getElementById('month-screenings').textContent = data.this_month || 0;
             
-            // Show clear button if there are screenings
+            // Show clear buttons if there are screenings
             if (data.today > 0) {
                 document.getElementById('clearTodayBtn').style.display = 'inline-block';
+            } else {
+                document.getElementById('clearTodayBtn').style.display = 'none';
+            }
+            
+            if (data.this_month > 0) {
+                document.getElementById('clearMonthBtn').style.display = 'inline-block';
+            } else {
+                document.getElementById('clearMonthBtn').style.display = 'none';
             }
         })
         .catch(error => {
@@ -154,14 +183,14 @@ document.getElementById('screenButton').addEventListener('click', function() {
 
 // Clear today's reports
 document.getElementById('clearTodayBtn').addEventListener('click', function() {
-    if (confirm('Are you sure you want to clear ALL screening reports? This action cannot be undone.')) {
-        fetch('/api/reports/clear-all?confirm=true', {
+    if (confirm('WARNING: This will permanently delete all of today\'s screening reports!\n\nAre you sure you want to continue?')) {
+        fetch('/api/reports/clear-today?confirm=true', {
             method: 'DELETE'
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert(data.message);
+                alert('Success: ' + data.message);
                 loadScreeningStats();
             } else {
                 alert('Error: ' + (data.error || 'Unknown error'));
@@ -171,6 +200,57 @@ document.getElementById('clearTodayBtn').addEventListener('click', function() {
             alert('Error clearing reports: ' + error);
         });
     }
+});
+
+// Clear this month's reports
+document.getElementById('clearMonthBtn').addEventListener('click', function() {
+    if (confirm('WARNING: This will permanently delete all of this month\'s screening reports!\n\nAre you sure you want to continue?')) {
+        if (confirm('This action CANNOT be undone. Click OK to confirm deletion.')) {
+            fetch('/api/reports/clear-month?confirm=true', {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Success: ' + data.message);
+                    loadScreeningStats();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                alert('Error clearing reports: ' + error);
+            });
+        }
+    }
+});
+
+// Reload sanctions data
+document.getElementById('reloadSanctionsBtn').addEventListener('click', function() {
+    const btn = this;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reloading...';
+    btn.disabled = true;
+    
+    fetch('/api/sanctions/reload', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Success: ' + data.message);
+            loadSanctionsStats();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        alert('Error reloading sanctions: ' + error);
+    })
+    .finally(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
 });
 </script>
 
@@ -291,6 +371,29 @@ document.getElementById('clearTodayBtn').addEventListener('click', function() {
 .btn-outline:hover {
     background: #dc3545;
     color: white;
+}
+
+.btn-reload {
+    background: #561217;
+    border: none;
+    color: white;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.btn-reload:hover {
+    background: #6b1b22;
+}
+
+.btn-reload:disabled {
+    background: #999;
+    cursor: not-allowed;
+}
+
+.date-loaded {
+    font-size: 0.85em;
+    color: #666;
+    margin: 5px 0;
 }
 
 @media (max-width: 768px) {

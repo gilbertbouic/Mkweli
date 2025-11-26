@@ -75,8 +75,8 @@ def check_sanctions():
         elif client_type in ['company', 'organization', 'corporation', 'business']:
             entity_type = 'company'
         
-        # Screen against sanctions
-        matches = screen_entity(client_name, entity_type, threshold=80)
+        # Screen against sanctions (70% threshold for better matching)
+        matches = screen_entity(client_name, entity_type, threshold=70)
         
         result = {
             'client_name': client_name,

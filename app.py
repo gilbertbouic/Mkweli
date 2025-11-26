@@ -6,12 +6,12 @@ import os
 import json
 import hashlib
 from io import BytesIO
-from flask import Flask, render_template, redirect, url_for, session, flash, request, jsonify, send_file
+from flask import Flask, render_template, redirect, url_for, session, flash, request, jsonify, send_file, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from functools import wraps
 from datetime import datetime, date
-from weasyprint import HTML
+from markupsafe import escape
 
 # Initialize Flask
 app = Flask(__name__)
@@ -136,8 +136,8 @@ def check_sanctions():
         elif client_type in ['company', 'organization', 'company/organization']:
             entity_type = 'company'
         
-        # Screen with appropriate threshold
-        matches = screen_entity(client_name, entity_type, threshold=80)
+        # Screen with appropriate threshold (70% for better matching)
+        matches = screen_entity(client_name, entity_type, threshold=70)
         
         screening_time = datetime.utcnow()
         
@@ -218,55 +218,171 @@ def api_reports_list():
 @app.route('/api/reports/export/<int:report_id>')
 @login_required
 def api_export_report(report_id):
-    """Export individual report as PDF"""
+    """Export individual report as print-friendly HTML page (native browser print)"""
     report = ScreeningReport.query.get_or_404(report_id)
     
-    # Generate PDF content
+    # Parse match details if available
+    match_details_html = ''
+    if report.match_details:
+        try:
+            matches = json.loads(report.match_details)
+            if matches:
+                match_details_html = '<ul class="matches-list">'
+                for match in matches:
+                    matched_name = escape(match.get('matched_name', 'N/A'))
+                    score = match.get('score', 0)
+                    entity = match.get('entity', {})
+                    source = escape(entity.get('source', 'N/A'))
+                    entity_type = escape(entity.get('type', 'unknown'))
+                    match_details_html += f'''
+                        <li>
+                            <strong>{matched_name}</strong> (Score: {score}%)<br>
+                            <small>Source: {source} | Type: {entity_type}</small>
+                        </li>
+                    '''
+                match_details_html += '</ul>'
+            else:
+                match_details_html = '<p>No matches found.</p>'
+        except json.JSONDecodeError:
+            match_details_html = '<p>No matches found.</p>'
+    else:
+        match_details_html = '<p>No matches found.</p>' if report.matches_found == 0 else f'<p>{report.matches_found} potential match(es) detected.</p>'
+    
+    # Escape user-provided data to prevent XSS
+    client_name_escaped = escape(report.client_name)
+    client_type_escaped = escape(report.client_type or 'Not specified')
+    report_hash_escaped = escape(report.report_hash or 'N/A')
+    
+    # Generate print-friendly HTML content
     html_content = f"""
     <!DOCTYPE html>
     <html>
     <head>
+        <meta charset="UTF-8">
+        <title>Screening Report - {client_name_escaped}</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
         <style>
-            body {{ font-family: Arial, sans-serif; padding: 20px; }}
-            h1 {{ color: #561217; }}
-            .header {{ border-bottom: 2px solid #561217; padding-bottom: 10px; margin-bottom: 20px; }}
-            .info {{ margin: 10px 0; }}
-            .label {{ font-weight: bold; }}
-            .matches {{ background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 20px; }}
-            .footer {{ margin-top: 30px; font-size: 0.8em; color: #666; border-top: 1px solid #ddd; padding-top: 10px; }}
+            @media print {{
+                body {{ margin: 0; padding: 20px; }}
+                .no-print {{ display: none !important; }}
+            }}
+            body {{
+                font-family: Arial, sans-serif;
+                padding: 40px;
+                max-width: 800px;
+                margin: 0 auto;
+                color: #333;
+            }}
+            h1 {{
+                color: #561217;
+                border-bottom: 2px solid #561217;
+                padding-bottom: 10px;
+            }}
+            .header {{
+                margin-bottom: 30px;
+            }}
+            .info-row {{
+                margin: 15px 0;
+                padding: 10px;
+                background: #f8f9fa;
+                border-radius: 4px;
+            }}
+            .info-label {{
+                font-weight: bold;
+                color: #561217;
+                width: 150px;
+                display: inline-block;
+            }}
+            .matches-section {{
+                margin-top: 30px;
+                padding: 20px;
+                background: #fff5f5;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+            }}
+            .matches-list {{
+                list-style: none;
+                padding: 0;
+            }}
+            .matches-list li {{
+                margin: 15px 0;
+                padding: 10px;
+                background: white;
+                border-left: 4px solid #dc3545;
+                border-radius: 4px;
+            }}
+            .footer {{
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 1px solid #ddd;
+                font-size: 0.85em;
+                color: #666;
+            }}
+            .hash {{
+                font-family: monospace;
+                word-break: break-all;
+                font-size: 0.8em;
+            }}
+            .print-btn {{
+                background: #561217;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 16px;
+                margin-bottom: 20px;
+            }}
+            .print-btn:hover {{
+                background: #6b1b22;
+            }}
         </style>
     </head>
     <body>
+        <button class="print-btn no-print" onclick="window.print()">
+            <i class="fas fa-print"></i> Print Report
+        </button>
+        
         <div class="header">
             <h1>Mkweli AML Screening Report</h1>
-            <p>Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}</p>
+            <p>Generated: {datetime.utcnow().strftime('%m.%d.%Y %H:%M:%S UTC')}</p>
         </div>
-        <div class="info"><span class="label">Client Name:</span> {report.client_name}</div>
-        <div class="info"><span class="label">Client Type:</span> {report.client_type or 'Not specified'}</div>
-        <div class="info"><span class="label">Screening Date:</span> {report.screening_time.strftime('%Y-%m-%d %H:%M:%S UTC') if report.screening_time else 'N/A'}</div>
-        <div class="info"><span class="label">Matches Found:</span> {report.matches_found}</div>
-        <div class="matches">
+        
+        <div class="info-row">
+            <span class="info-label">Client Name:</span> {client_name_escaped}
+        </div>
+        <div class="info-row">
+            <span class="info-label">Client Type:</span> {client_type_escaped}
+        </div>
+        <div class="info-row">
+            <span class="info-label">Screening Date:</span> {report.screening_time.strftime('%m.%d.%Y %H:%M:%S UTC') if report.screening_time else 'N/A'}
+        </div>
+        <div class="info-row">
+            <span class="info-label">Matches Found:</span> {report.matches_found}
+        </div>
+        
+        <div class="matches-section">
             <h3>Match Details</h3>
-            <p>{'No matches found.' if report.matches_found == 0 else f'{report.matches_found} potential match(es) detected.'}</p>
+            {match_details_html}
         </div>
+        
         <div class="footer">
-            <p><strong>Report Hash:</strong> {report.report_hash}</p>
+            <p><strong>Report Hash (SHA256):</strong></p>
+            <p class="hash">{report_hash_escaped}</p>
             <p>This report was generated by Mkweli AML Screening System.</p>
         </div>
+        
+        <script>
+            // Auto-print when page loads (optional - commented out)
+            // window.onload = function() {{ window.print(); }}
+        </script>
     </body>
     </html>
     """
     
-    pdf_buffer = BytesIO()
-    HTML(string=html_content).write_pdf(pdf_buffer)
-    pdf_buffer.seek(0)
-    
-    return send_file(
-        pdf_buffer,
-        mimetype='application/pdf',
-        as_attachment=True,
-        download_name=f'screening_report_{report_id}.pdf'
-    )
+    response = make_response(html_content)
+    response.headers['Content-Type'] = 'text/html'
+    return response
 
 
 @app.route('/api/reports/daily-stats')
@@ -331,6 +447,58 @@ def api_clear_all_reports():
     })
 
 
+@app.route('/api/reports/clear-today', methods=['DELETE'])
+@login_required
+def api_clear_today_reports():
+    """Clear only today's reports with confirmation"""
+    confirm = request.args.get('confirm', 'false').lower() == 'true'
+    
+    if not confirm:
+        return jsonify({'error': 'Confirmation required. Add ?confirm=true to proceed.'}), 400
+    
+    today = date.today()
+    count = ScreeningReport.query.filter(
+        db.func.date(ScreeningReport.screening_time) == today
+    ).count()
+    
+    ScreeningReport.query.filter(
+        db.func.date(ScreeningReport.screening_time) == today
+    ).delete(synchronize_session=False)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'Cleared {count} screening reports from today.'
+    })
+
+
+@app.route('/api/reports/clear-month', methods=['DELETE'])
+@login_required
+def api_clear_month_reports():
+    """Clear only this month's reports with confirmation"""
+    confirm = request.args.get('confirm', 'false').lower() == 'true'
+    
+    if not confirm:
+        return jsonify({'error': 'Confirmation required. Add ?confirm=true to proceed.'}), 400
+    
+    today = date.today()
+    first_of_month = today.replace(day=1)
+    
+    count = ScreeningReport.query.filter(
+        db.func.date(ScreeningReport.screening_time) >= first_of_month
+    ).count()
+    
+    ScreeningReport.query.filter(
+        db.func.date(ScreeningReport.screening_time) >= first_of_month
+    ).delete(synchronize_session=False)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'Cleared {count} screening reports from this month.'
+    })
+
+
 @app.route('/api/dashboard/sanctions-count')
 @login_required
 def api_sanctions_count():
@@ -368,6 +536,54 @@ def api_screening_stats():
         'this_month': month_count,
         'total': total_count
     })
+
+
+@app.route('/api/sanctions/reload', methods=['POST'])
+@login_required
+def api_reload_sanctions():
+    """Manually reload sanctions data from XML files"""
+    try:
+        from app.sanctions_service import reload_sanctions_data, get_sanctions_stats
+        msg = reload_sanctions_data()
+        stats = get_sanctions_stats()
+        return jsonify({
+            'success': True,
+            'message': msg,
+            'count': stats.get('total_entities', 0),
+            'last_loaded': stats.get('last_loaded')
+        })
+    except Exception as e:
+        return jsonify({'error': f'Failed to reload sanctions: {str(e)}'}), 500
+
+
+@app.route('/api/sanctions/last-loaded')
+@login_required
+def api_sanctions_last_loaded():
+    """Get when sanctions data was last loaded"""
+    try:
+        from app.sanctions_service import get_sanctions_stats
+        stats = get_sanctions_stats()
+        last_loaded = stats.get('last_loaded')
+        
+        # Format as mm.dd.yyyy if available
+        formatted_date = None
+        if last_loaded:
+            try:
+                from datetime import datetime as dt
+                if isinstance(last_loaded, str):
+                    loaded_dt = dt.fromisoformat(last_loaded)
+                else:
+                    loaded_dt = last_loaded
+                formatted_date = loaded_dt.strftime('%m.%d.%Y')
+            except (ValueError, AttributeError):
+                formatted_date = last_loaded
+        
+        return jsonify({
+            'last_loaded': last_loaded,
+            'formatted': formatted_date
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # Error handlers
 @app.errorhandler(404)

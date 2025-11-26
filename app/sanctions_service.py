@@ -151,9 +151,11 @@ class SanctionsService:
         
         for entity_elem in root.findall('.//fsd:sanctionEntity', ns):
             names = []
-            name_elem = entity_elem.find('.//fsd:nameAlias', ns)
-            if name_elem is not None and name_elem.text:
-                names.append(name_elem.text.strip())
+            # EU format uses wholeName attribute on nameAlias elements
+            for name_elem in entity_elem.findall('.//fsd:nameAlias', ns):
+                whole_name = name_elem.get('wholeName')
+                if whole_name and whole_name.strip():
+                    names.append(whole_name.strip())
             
             if names:
                 entities.append({
@@ -290,7 +292,7 @@ class OptimalFuzzyMatcher:
         
         return ' '.join(words_sorted)
     
-    def match_entity(self, search_name: str, entity_type: str = None, threshold: int = 80) -> List[Dict[str, Any]]:
+    def match_entity(self, search_name: str, entity_type: str = None, threshold: int = 70) -> List[Dict[str, Any]]:
         """Match with optimal strategy"""
         if not search_name:
             return []
@@ -370,7 +372,7 @@ def get_sanctions_stats():
     
     return stats
 
-def screen_entity(name: str, entity_type: str = None, threshold: int = 80):
+def screen_entity(name: str, entity_type: str = None, threshold: int = 70):
     """Screen a single entity against sanctions"""
     if not fuzzy_matcher:
         return []
