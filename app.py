@@ -123,7 +123,7 @@ def check_sanctions():
             return jsonify({'error': 'Client name is required'}), 400
         
         # Use the enhanced sanctions service for matching
-        from app.enhanced_matcher import EnhancedSanctionsMatcher, get_matcher_instance
+        from app.enhanced_matcher import get_matcher_instance
         
         matcher = get_matcher_instance()
         matches = matcher.find_matches(client_name, threshold=70)
