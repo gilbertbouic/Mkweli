@@ -299,18 +299,32 @@ class OptimalFuzzyMatcher:
         if not normalized_search:
             return []
         
+        # Lower threshold for company/organization matching since names vary more
+        effective_threshold = threshold
+        if entity_type in ['company', 'organization', 'entity']:
+            effective_threshold = min(threshold, 65)
+        
         matches = []
         seen_entities = set()
         
         for normalized_db_name, entity, original_name in self.all_names:
-            # Skip if entity type doesn't match (if specified)
-            if entity_type and entity.get('type') and entity_type not in entity.get('type'):
-                continue
+            # Entity type filtering - map 'company' to include 'entity' type from sanctions lists
+            if entity_type:
+                db_type = entity.get('type', '').lower()
+                # Companies should match 'entity' type in sanctions data
+                if entity_type in ['company', 'organization']:
+                    if db_type and db_type not in ['entity', 'unknown', 'company', 'organization']:
+                        continue
+                elif entity_type == 'individual':
+                    if db_type and db_type not in ['individual', 'unknown', 'person']:
+                        continue
             
-            # Calculate score
-            score = fuzz.token_sort_ratio(normalized_search, normalized_db_name)
+            # Calculate score using multiple strategies
+            score1 = fuzz.token_sort_ratio(normalized_search, normalized_db_name)
+            score2 = fuzz.token_set_ratio(normalized_search, normalized_db_name)
+            score = max(score1, score2)
             
-            if score >= threshold:
+            if score >= effective_threshold:
                 entity_id = id(entity)
                 if entity_id not in seen_entities:
                     seen_entities.add(entity_id)
@@ -361,4 +375,4 @@ def screen_entity(name: str, entity_type: str = None, threshold: int = 80):
     if not fuzzy_matcher:
         return []
     
-    return fuzzy_matcher.match_entity(name, threshold, entity_type)
+    return fuzzy_matcher.match_entity(name, entity_type, threshold)
