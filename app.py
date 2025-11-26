@@ -50,7 +50,6 @@ class ScreeningReport(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     client_name = db.Column(db.String(255), nullable=False)
-    client_type = db.Column(db.String(50))  # individual or company
     matches_found = db.Column(db.Integer, default=0)
     match_details = db.Column(db.Text)  # JSON string of match results
     screening_time = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -61,7 +60,6 @@ class ScreeningReport(db.Model):
         return {
             'id': self.id,
             'client_name': self.client_name,
-            'client_type': self.client_type,
             'matches_found': self.matches_found,
             'screening_time': self.screening_time.isoformat() if self.screening_time else None,
             'report_hash': self.report_hash
@@ -118,40 +116,30 @@ def check_sanctions():
         if request.is_json:
             data = request.get_json()
             client_name = data.get('name', '').strip()
-            client_type = data.get('type', 'individual').lower()
         else:
             client_name = request.form.get('primary_name', '').strip()
-            client_type = request.form.get('client_type', 'Individual').lower()
         
         if not client_name:
             return jsonify({'error': 'Client name is required'}), 400
         
-        # Use the sanctions service for matching
-        from app.sanctions_service import screen_entity, fuzzy_matcher
+        # Use the enhanced sanctions service for matching
+        from app.enhanced_matcher import EnhancedSanctionsMatcher, get_matcher_instance
         
-        # Map client type to entity type for matching
-        entity_type = None
-        if client_type in ['individual', 'person']:
-            entity_type = 'individual'
-        elif client_type in ['company', 'organization', 'company/organization']:
-            entity_type = 'company'
-        
-        # Screen with appropriate threshold (70% for better matching)
-        matches = screen_entity(client_name, entity_type, threshold=70)
+        matcher = get_matcher_instance()
+        matches = matcher.find_matches(client_name, threshold=70)
         
         screening_time = datetime.utcnow()
         
         # Save screening report if user is logged in
         if 'user_id' in session:
             # Create report hash
-            report_data = f"{client_name}{entity_type}{screening_time.isoformat()}{len(matches)}"
+            report_data = f"{client_name}{screening_time.isoformat()}{len(matches)}"
             report_hash = hashlib.sha256(report_data.encode()).hexdigest()
             
-            # Save to database
+            # Save to database (client_type removed)
             report = ScreeningReport(
                 user_id=session['user_id'],
                 client_name=client_name,
-                client_type=entity_type or 'unknown',
                 matches_found=len(matches),
                 match_details=json.dumps(matches[:5]) if matches else None,
                 screening_time=screening_time,
@@ -161,10 +149,9 @@ def check_sanctions():
             db.session.add(report)
             db.session.commit()
         
-        # Return results
+        # Return results (client_type removed)
         return jsonify({
             'client_name': client_name,
-            'client_type': entity_type or 'unknown',
             'match_count': len(matches),
             'matches': matches[:5],  # Return top 5 matches
             'screening_time': screening_time.isoformat()
@@ -250,7 +237,6 @@ def api_export_report(report_id):
     
     # Escape user-provided data to prevent XSS
     client_name_escaped = escape(report.client_name)
-    client_type_escaped = escape(report.client_type or 'Not specified')
     report_hash_escaped = escape(report.report_hash or 'N/A')
     
     # Generate print-friendly HTML content
@@ -350,9 +336,6 @@ def api_export_report(report_id):
         
         <div class="info-row">
             <span class="info-label">Client Name:</span> {client_name_escaped}
-        </div>
-        <div class="info-row">
-            <span class="info-label">Client Type:</span> {client_type_escaped}
         </div>
         <div class="info-row">
             <span class="info-label">Screening Date:</span> {report.screening_time.strftime('%m.%d.%Y %H:%M:%S UTC') if report.screening_time else 'N/A'}

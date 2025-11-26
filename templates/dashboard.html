@@ -48,14 +48,6 @@
             <label for="clientName">Client Name:</label>
             <input type="text" id="clientName" placeholder="Enter client or company name">
         </div>
-        <div class="form-group">
-            <label for="clientType">Client Type:</label>
-            <select id="clientType">
-                <option value="">Select type...</option>
-                <option value="individual">Individual</option>
-                <option value="company">Company/Organization</option>
-            </select>
-        </div>
         <button id="screenButton" class="btn btn-primary">Screen Client</button>
     </div>
 
@@ -127,7 +119,6 @@ loadScreeningStats();
 // Screening form handler
 document.getElementById('screenButton').addEventListener('click', function() {
     const clientName = document.getElementById('clientName').value;
-    const clientType = document.getElementById('clientType').value;
     
     if (!clientName) {
         alert('Please enter a client name');
@@ -141,7 +132,7 @@ document.getElementById('screenButton').addEventListener('click', function() {
     fetch('/check_sanctions', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({name: clientName, type: clientType})
+        body: JSON.stringify({name: clientName})
     })
     .then(response => response.json())
     .then(data => {
@@ -151,7 +142,7 @@ document.getElementById('screenButton').addEventListener('click', function() {
             html = `<div class="error">Error: ${data.error}</div>`;
         } else {
             html = `<div class="result-summary">
-                <p><strong>Client:</strong> ${data.client_name} (${data.client_type})</p>
+                <p><strong>Client:</strong> ${data.client_name}</p>
                 <p><strong>Matches Found:</strong> ${data.match_count}</p>
                 <p><strong>Screened:</strong> ${new Date(data.screening_time).toLocaleString()}</p>
             </div>`;
@@ -287,7 +278,7 @@ document.getElementById('reloadSanctionsBtn').addEventListener('click', function
 
 .screening-form {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: 1fr auto;
     gap: 15px;
     align-items: end;
 }
