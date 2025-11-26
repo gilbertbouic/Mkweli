@@ -183,14 +183,14 @@ document.getElementById('screenButton').addEventListener('click', function() {
 
 // Clear today's reports
 document.getElementById('clearTodayBtn').addEventListener('click', function() {
-    if (confirm('⚠️ WARNING: This will permanently delete all of today\'s screening reports!\n\nAre you sure you want to continue?')) {
+    if (confirm('WARNING: This will permanently delete all of today\'s screening reports!\n\nAre you sure you want to continue?')) {
         fetch('/api/reports/clear-today?confirm=true', {
             method: 'DELETE'
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('✅ ' + data.message);
+                alert('Success: ' + data.message);
                 loadScreeningStats();
             } else {
                 alert('Error: ' + (data.error || 'Unknown error'));
@@ -204,7 +204,7 @@ document.getElementById('clearTodayBtn').addEventListener('click', function() {
 
 // Clear this month's reports
 document.getElementById('clearMonthBtn').addEventListener('click', function() {
-    if (confirm('⚠️ WARNING: This will permanently delete all of this month\'s screening reports!\n\nAre you sure you want to continue?')) {
+    if (confirm('WARNING: This will permanently delete all of this month\'s screening reports!\n\nAre you sure you want to continue?')) {
         if (confirm('This action CANNOT be undone. Click OK to confirm deletion.')) {
             fetch('/api/reports/clear-month?confirm=true', {
                 method: 'DELETE'
@@ -212,7 +212,7 @@ document.getElementById('clearMonthBtn').addEventListener('click', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('✅ ' + data.message);
+                    alert('Success: ' + data.message);
                     loadScreeningStats();
                 } else {
                     alert('Error: ' + (data.error || 'Unknown error'));
@@ -238,14 +238,14 @@ document.getElementById('reloadSanctionsBtn').addEventListener('click', function
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('✅ ' + data.message);
+            alert('Success: ' + data.message);
             loadSanctionsStats();
         } else {
-            alert('❌ Error: ' + (data.error || 'Unknown error'));
+            alert('Error: ' + (data.error || 'Unknown error'));
         }
     })
     .catch(error => {
-        alert('❌ Error reloading sanctions: ' + error);
+        alert('Error reloading sanctions: ' + error);
     })
     .finally(() => {
         btn.innerHTML = originalText;

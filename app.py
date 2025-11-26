@@ -260,6 +260,7 @@ def api_export_report(report_id):
     <head>
         <meta charset="UTF-8">
         <title>Screening Report - {client_name_escaped}</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
         <style>
             @media print {{
                 body {{ margin: 0; padding: 20px; }}
@@ -339,7 +340,7 @@ def api_export_report(report_id):
     </head>
     <body>
         <button class="print-btn no-print" onclick="window.print()">
-            🖨️ Print Report
+            <i class="fas fa-print"></i> Print Report
         </button>
         
         <div class="header">
