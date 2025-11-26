@@ -5,11 +5,13 @@ Mkweli AML Screening System - Robust Version
 import os
 import json
 import hashlib
-from flask import Flask, render_template, redirect, url_for, session, flash, request, jsonify
+from io import BytesIO
+from flask import Flask, render_template, redirect, url_for, session, flash, request, jsonify, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from functools import wraps
 from datetime import datetime, date
+from weasyprint import HTML
 
 # Initialize Flask
 app = Flask(__name__)
@@ -220,9 +222,6 @@ def api_export_report(report_id):
     report = ScreeningReport.query.get_or_404(report_id)
     
     # Generate PDF content
-    from io import BytesIO
-    from weasyprint import HTML
-    
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -262,7 +261,6 @@ def api_export_report(report_id):
     HTML(string=html_content).write_pdf(pdf_buffer)
     pdf_buffer.seek(0)
     
-    from flask import send_file
     return send_file(
         pdf_buffer,
         mimetype='application/pdf',
