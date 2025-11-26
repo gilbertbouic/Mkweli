@@ -4,21 +4,27 @@
 
 {% block content %}
 <div class="container mt-5">
-    <h1 class="mb-4 fw-bold" style="color: #561217;">Reports</h1>
+    <h1 class="mb-4 fw-bold" style="color: #561217;">Reports & Screening History</h1>
     
     <div class="alert alert-info">
-        <strong>Reports Dashboard</strong><br>
-        Generate and view compliance reports for your sanctions screening activities.
+        <strong><i class="fas fa-info-circle"></i> Reports Dashboard</strong><br>
+        View your sanctions screening activity and compliance reports.
     </div>
 
     <div class="row g-4">
-        <div class="col-md-6">
-            <div class="card border-primary shadow-sm hover-shadow">
-                <div class="card-body text-center">
-                    <i class="bi bi-file-text text-primary fs-1 mb-3"></i>
-                    <h5 class="card-title">Screening Reports</h5>
-                    <p class="card-text">Generate detailed reports of all sanctions screening activities.</p>
-                    <button class="btn btn-primary" disabled>Coming Soon</button>
+        <div class="col-md-12">
+            <div class="card border-primary shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-history"></i> Recent Screening Activity
+                </div>
+                <div class="card-body">
+                    <div id="screeningHistory">
+                        <p class="text-muted text-center py-4">
+                            <i class="fas fa-clipboard-list fa-3x mb-3 d-block"></i>
+                            No screening history available yet.<br>
+                            <small>Perform a screening from the Dashboard to see results here.</small>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -26,21 +32,25 @@
         <div class="col-md-6">
             <div class="card border-success shadow-sm hover-shadow">
                 <div class="card-body text-center">
-                    <i class="bi bi-graph-up text-success fs-1 mb-3"></i>
-                    <h5 class="card-title">Compliance Analytics</h5>
-                    <p class="card-text">View analytics and trends in your compliance activities.</p>
-                    <button class="btn btn-success" disabled>Coming Soon</button>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-6">
-            <div class="card border-warning shadow-sm hover-shadow">
-                <div class="card-body text-center">
-                    <i class="bi bi-clock-history text-warning fs-1 mb-3"></i>
-                    <h5 class="card-title">Audit Trail</h5>
-                    <p class="card-text">Review complete audit trail of all system activities.</p>
-                    <button class="btn btn-warning" disabled>Coming Soon</button>
+                    <i class="fas fa-chart-line text-success" style="font-size: 3rem;"></i>
+                    <h5 class="card-title mt-3">Screening Statistics</h5>
+                    <p class="card-text">View your screening activity summary.</p>
+                    <div class="stats-summary mt-3">
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="stat-item">
+                                    <span class="stat-value" id="totalScreenings">0</span>
+                                    <span class="stat-label">Total Screenings</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-item">
+                                    <span class="stat-value" id="matchesFound">0</span>
+                                    <span class="stat-label">Matches Found</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -48,13 +58,38 @@
         <div class="col-md-6">
             <div class="card border-info shadow-sm hover-shadow">
                 <div class="card-body text-center">
-                    <i class="bi bi-download text-info fs-1 mb-3"></i>
-                    <h5 class="card-title">Export Data</h5>
-                    <p class="card-text">Export screening results and compliance data.</p>
-                    <button class="btn btn-info" disabled>Coming Soon</button>
+                    <i class="fas fa-database text-info" style="font-size: 3rem;"></i>
+                    <h5 class="card-title mt-3">Sanctions Data Status</h5>
+                    <p class="card-text">Current sanctions list information.</p>
+                    <div class="data-status mt-3">
+                        <div id="sanctionsStatus">
+                            <span class="badge bg-secondary">Loading...</span>
+                        </div>
+                        <p class="mt-2 mb-0"><small id="entitiesCount">Checking data...</small></p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+// Load sanctions stats
+fetch('/sanctions-stats')
+    .then(response => response.json())
+    .then(data => {
+        if (data.entities_loaded || data.total_entities) {
+            const count = data.entities_loaded || data.total_entities;
+            document.getElementById('sanctionsStatus').innerHTML = '<span class="badge bg-success"><i class="fas fa-check"></i> Active</span>';
+            document.getElementById('entitiesCount').textContent = count.toLocaleString() + ' entities loaded';
+        } else if (data.error) {
+            document.getElementById('sanctionsStatus').innerHTML = '<span class="badge bg-warning">Initializing</span>';
+            document.getElementById('entitiesCount').textContent = 'Service starting up...';
+        }
+    })
+    .catch(error => {
+        document.getElementById('sanctionsStatus').innerHTML = '<span class="badge bg-danger">Error</span>';
+        document.getElementById('entitiesCount').textContent = 'Unable to load status';
+    });
+</script>
 {% endblock %}
