@@ -87,44 +87,43 @@ def clients():
 @app.route('/check_sanctions', methods=['POST'])
 def check_sanctions():
     try:
-        client_name = request.form.get('primary_name', '').strip()
-        client_type = request.form.get('client_type', 'Individual')
+        # Accept both JSON and form data
+        if request.is_json:
+            data = request.get_json()
+            client_name = data.get('name', '').strip()
+            client_type = data.get('type', 'individual').lower()
+        else:
+            client_name = request.form.get('primary_name', '').strip()
+            client_type = request.form.get('client_type', 'Individual').lower()
         
         if not client_name:
             return jsonify({'error': 'Client name is required'}), 400
         
-        # Use the XML parser directly for better matching
-        from app.robust_sanctions_parser import RobustSanctionsParser
-        parser = RobustSanctionsParser()
-        entities = parser.parse_all_sanctions()
+        # Use the sanctions service for matching
+        from app.sanctions_service import screen_entity, fuzzy_matcher
         
-        from app.advanced_fuzzy_matcher import OptimalFuzzyMatcher
-        matcher = OptimalFuzzyMatcher(entities)
+        # Map client type to entity type for matching
+        entity_type = None
+        if client_type in ['individual', 'person']:
+            entity_type = 'individual'
+        elif client_type in ['company', 'organization', 'company/organization']:
+            entity_type = 'company'
         
-        # Use a lower threshold to catch more matches
-        matches = matcher.find_matches(client_name, threshold=70)
-        
-        # Log the screening
-        screening_result = {
-            'client_name': client_name,
-            'client_type': client_type,
-            'matches_found': len(matches),
-            'matches': matches,
-            'screening_time': datetime.utcnow().isoformat(),
-        }
+        # Screen with appropriate threshold
+        matches = screen_entity(client_name, entity_type, threshold=80)
         
         # Return results
         return jsonify({
             'client_name': client_name,
-            'client_type': client_type,
-            'matches_found': len(matches),
+            'client_type': entity_type or 'unknown',
+            'match_count': len(matches),
             'matches': matches[:5],  # Return top 5 matches
-            'screening_time': screening_result['screening_time']
+            'screening_time': datetime.utcnow().isoformat()
         })
         
     except Exception as e:
         print(f"Error in sanctions check: {e}")
-        return jsonify({'error': 'Screening failed'}), 500
+        return jsonify({'error': f'Screening failed: {str(e)}'}), 500
 
 @app.route('/sanctions-stats')
 def sanctions_stats():
@@ -178,19 +177,13 @@ with app.app_context():
     
     # Initialize sanctions service
     try:
-        from app.robust_sanctions_parser import RobustSanctionsParser
+        from app.sanctions_service import init_sanctions_service
         init_msg = init_sanctions_service()
         print(f"✅ {init_msg}")
     except Exception as e:
         print(f"⚠️ Sanctions service: {e}")
         print("📋 The application will run with basic functionality")
         print("🔧 Sanctions screening will be available once the service loads")
-
-if __name__ == '__main__':
-    print("🚀 Starting Mkweli AML Screening System...")
-    print("📍 Access at: http://localhost:5000")
-    print("🔑 Login with password: admin123")
-    app.run(debug=True, host='0.0.0.0', port=5000)
 
 @app.route('/sanctions-lists')
 @login_required
@@ -215,3 +208,11 @@ def settings():
 def help_page():
     """Help documentation"""
     return render_template('help.html')
+
+if __name__ == '__main__':
+    print("🚀 Starting Mkweli AML Screening System...")
+    print("📍 Access at: http://localhost:5000")
+    print("🔑 Login with password: admin123")
+    # Debug mode controlled by environment variable for security
+    debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    app.run(debug=debug_mode, host='0.0.0.0', port=5000)
