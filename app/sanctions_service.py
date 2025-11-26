@@ -385,4 +385,12 @@ def reload_sanctions_data():
     global sanctions_service, fuzzy_matcher
     sanctions_service = SanctionsService()
     fuzzy_matcher = OptimalFuzzyMatcher(sanctions_service.sanctions_entities)
+    
+    # Also reload the enhanced matcher
+    try:
+        from app.enhanced_matcher import reload_matcher
+        reload_matcher()
+    except ImportError:
+        pass  # Enhanced matcher not available
+    
     return f"Reloaded {len(sanctions_service.sanctions_entities)} entities"
