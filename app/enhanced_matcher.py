@@ -336,8 +336,9 @@ def get_matcher_instance() -> EnhancedSanctionsMatcher:
         if sanctions_service is None:
             init_sanctions_service()
         
-        from app.sanctions_service import sanctions_service as svc
-        _matcher_instance = EnhancedSanctionsMatcher(svc.sanctions_entities)
+        # Re-import to get the updated reference after initialization
+        from app.sanctions_service import sanctions_service
+        _matcher_instance = EnhancedSanctionsMatcher(sanctions_service.sanctions_entities)
     
     return _matcher_instance
 
