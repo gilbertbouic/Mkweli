@@ -119,3 +119,47 @@ class Sanction(db.Model):
     entity_id = db.Column(db.Integer, db.ForeignKey('entity.id'))
     program = db.Column(db.String(100))
     description = db.Column(db.Text)
+
+
+class ScreeningReport(db.Model):
+    """Track individual client screenings with details"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    client_name = db.Column(db.String(255), nullable=False)
+    client_type = db.Column(db.String(50))  # individual or company
+    matches_found = db.Column(db.Integer, default=0)
+    match_details = db.Column(db.Text)  # JSON string of match results
+    screening_time = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    report_hash = db.Column(db.String(64))  # SHA256 hash for verification
+    ip_address = db.Column(db.String(64))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'client_name': self.client_name,
+            'client_type': self.client_type,
+            'matches_found': self.matches_found,
+            'screening_time': self.screening_time.isoformat() if self.screening_time else None,
+            'report_hash': self.report_hash
+        }
+
+
+class ReportLog(db.Model):
+    """Track daily/monthly report generation activities"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    report_type = db.Column(db.String(50), nullable=False)  # daily or monthly
+    report_date = db.Column(db.Date, nullable=False)
+    total_screenings = db.Column(db.Integer, default=0)
+    total_matches = db.Column(db.Integer, default=0)
+    generated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'report_type': self.report_type,
+            'report_date': self.report_date.isoformat() if self.report_date else None,
+            'total_screenings': self.total_screenings,
+            'total_matches': self.total_matches,
+            'generated_at': self.generated_at.isoformat() if self.generated_at else None
+        }
