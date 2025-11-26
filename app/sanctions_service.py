@@ -376,3 +376,11 @@ def screen_entity(name: str, entity_type: str = None, threshold: int = 80):
         return []
     
     return fuzzy_matcher.match_entity(name, entity_type, threshold)
+
+
+def reload_sanctions_data():
+    """Force reload sanctions data"""
+    global sanctions_service, fuzzy_matcher
+    sanctions_service = SanctionsService()
+    fuzzy_matcher = OptimalFuzzyMatcher(sanctions_service.sanctions_entities)
+    return f"Reloaded {len(sanctions_service.sanctions_entities)} entities"

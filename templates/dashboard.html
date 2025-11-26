@@ -15,9 +15,17 @@
         <p>Entities loaded</p>
     </div>
     <div class="stat-card">
-        <h3>Recent Screens</h3>
-        <div class="stat-number">0</div>
-        <p>Today's screenings</p>
+        <h3>Today's Screenings</h3>
+        <div class="stat-number" id="today-screenings">0</div>
+        <p>Screenings today</p>
+        <button class="btn btn-sm btn-outline" id="clearTodayBtn" style="margin-top: 10px; display: none;">
+            <i class="fas fa-trash"></i> Clear Today
+        </button>
+    </div>
+    <div class="stat-card">
+        <h3>This Month</h3>
+        <div class="stat-number" id="month-screenings">0</div>
+        <p>Screenings this month</p>
     </div>
     <div class="stat-card">
         <h3>System Status</h3>
@@ -51,6 +59,43 @@
 </div>
 
 <script>
+// Load sanctions stats
+function loadSanctionsStats() {
+    fetch('/api/dashboard/sanctions-count')
+        .then(response => response.json())
+        .then(data => {
+            if (data.count) {
+                document.getElementById('total-entities').textContent = data.count.toLocaleString();
+            }
+        })
+        .catch(error => {
+            document.getElementById('total-entities').textContent = 'Error';
+        });
+}
+
+// Load screening stats
+function loadScreeningStats() {
+    fetch('/api/dashboard/screening-stats')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('today-screenings').textContent = data.today || 0;
+            document.getElementById('month-screenings').textContent = data.this_month || 0;
+            
+            // Show clear button if there are screenings
+            if (data.today > 0) {
+                document.getElementById('clearTodayBtn').style.display = 'inline-block';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading screening stats:', error);
+        });
+}
+
+// Initial load
+loadSanctionsStats();
+loadScreeningStats();
+
+// Screening form handler
 document.getElementById('screenButton').addEventListener('click', function() {
     const clientName = document.getElementById('clientName').value;
     const clientType = document.getElementById('clientType').value;
@@ -98,20 +143,35 @@ document.getElementById('screenButton').addEventListener('click', function() {
         }
         
         document.getElementById('resultsContent').innerHTML = html;
+        
+        // Refresh screening stats after a new screening
+        loadScreeningStats();
     })
     .catch(error => {
         document.getElementById('resultsContent').innerHTML = `<div class="error">Screening failed: ${error}</div>`;
     });
 });
 
-// Load sanctions stats
-fetch('/sanctions-stats')
-    .then(response => response.json())
-    .then(data => {
-        if (data.total_entities) {
-            document.getElementById('total-entities').textContent = data.total_entities.toLocaleString();
-        }
-    });
+// Clear today's reports
+document.getElementById('clearTodayBtn').addEventListener('click', function() {
+    if (confirm('Are you sure you want to clear ALL screening reports? This action cannot be undone.')) {
+        fetch('/api/reports/clear-all?confirm=true', {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                loadScreeningStats();
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            alert('Error clearing reports: ' + error);
+        });
+    }
+});
 </script>
 
 <style>
@@ -213,6 +273,24 @@ fetch('/sanctions-stats')
     text-align: center;
     padding: 20px;
     color: #7f8c8d;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 0.85em;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid #dc3545;
+    color: #dc3545;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.btn-outline:hover {
+    background: #dc3545;
+    color: white;
 }
 
 @media (max-width: 768px) {
