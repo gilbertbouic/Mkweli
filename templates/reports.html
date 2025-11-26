@@ -178,11 +178,8 @@ function loadReports(page = 1) {
                     </td>
                     <td>${new Date(report.screening_time).toLocaleString()}</td>
                     <td>
-                        <a href="/api/reports/export/${report.id}" class="btn btn-sm btn-primary btn-action" title="Download PDF">
-                            <i class="fas fa-download"></i>
-                        </a>
-                        <button class="btn btn-sm btn-info btn-action" onclick="printReport(${report.id})" title="Print">
-                            <i class="fas fa-print"></i>
+                        <button class="btn btn-sm btn-primary btn-action" onclick="printReport(${report.id})" title="Print Report">
+                            <i class="fas fa-print"></i> Print
                         </button>
                     </td>
                 </tr>
