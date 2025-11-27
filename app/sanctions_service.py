@@ -1,29 +1,22 @@
-"""
-Complete Sanctions Service with all required functions
-"""
-import pandas as pd
-from typing import List, Dict, Any, Optional
-import logging
-from fuzzywuzzy import fuzz
-from unidecode import unidecode
-import re
-from datetime import datetime, timedelta
-import pickle
 import os
+import re
+import pickle
 import hashlib
 from pathlib import Path
+from typing import List, Dict, Any, Optional
+from datetime import datetime
+import logging
 
 logger = logging.getLogger(__name__)
 
 class SanctionsService:
-    """Main sanctions service"""
-    
     def __init__(self, data_dir="data", cache_file="instance/sanctions_cache.pkl"):
         self.data_dir = Path(data_dir)
         self.cache_file = cache_file
         self.sanctions_entities = []
         self.last_loaded = None
         self.file_hashes = {}
+        self.all_names = []  # For fuzzy matching optimization
         self._load_or_parse_sanctions()
     
     def _get_file_hash(self, file_path: Path) -> str:
@@ -89,9 +82,19 @@ class SanctionsService:
                     'file_hashes': self.file_hashes
                 }, f)
             logger.info(f"Cached {len(self.sanctions_entities)} entities")
+            
+            # Build name index for fuzzy matching
+            self._build_name_index()
+    
+    def _build_name_index(self):
+        """Build optimized index for fuzzy matching"""
+        self.all_names = []
+        for entity in self.sanctions_entities:
+            for name in entity.get('names', []):
+                self.all_names.append((name.lower(), entity, name))
     
     def _parse_all_sanctions(self) -> List[Dict[str, Any]]:
-        """Parse all XML sanctions files"""
+        """Parse all XML sanctions files with better error handling"""
         import xml.etree.ElementTree as ET
         xml_files = list(self.data_dir.glob('*.xml'))
         all_entities = []
@@ -101,6 +104,12 @@ class SanctionsService:
                 print(f"📁 Parsing {xml_file.name}...")
                 tree = ET.parse(xml_file)
                 root = tree.getroot()
+                
+                # Debug: print root tag and some structure
+                print(f"   Root tag: {root.tag}")
+                if len(root) > 0:
+                    print(f"   Child elements: {[child.tag for child in root[:5]]}")
+                
                 filename = xml_file.name.lower()
                 
                 if 'uk' in filename:
@@ -119,6 +128,13 @@ class SanctionsService:
                 
             except Exception as e:
                 print(f"   ❌ Error parsing {xml_file.name}: {e}")
+                # Try generic parser as fallback
+                try:
+                    entities = self._parse_generic(root, str(xml_file.name))
+                    all_entities.extend(entities)
+                    print(f"   ⚠️  Fallback extracted {len(entities)} entities from {xml_file.name}")
+                except Exception as fallback_e:
+                    print(f"   ❌ Fallback also failed for {xml_file.name}: {fallback_e}")
                 
         return all_entities
     
@@ -145,155 +161,349 @@ class SanctionsService:
         return entities
     
     def _parse_eu_format(self, root, source: str) -> List[Dict[str, Any]]:
-        """Parse EU consolidated format"""
-        entities = []
-        ns = {'fsd': 'http://eu.europa.ec/fpi/fsd/export'}
-        
-        for entity_elem in root.findall('.//fsd:sanctionEntity', ns):
-            names = []
-            # EU format uses wholeName attribute on nameAlias elements
-            for name_elem in entity_elem.findall('.//fsd:nameAlias', ns):
-                whole_name = name_elem.get('wholeName')
-                if whole_name and whole_name.strip():
-                    names.append(whole_name.strip())
-            
-            if names:
-                entities.append({
-                    'source': source,
-                    'list_type': 'EU',
-                    'names': names,
-                    'primary_name': names[0],
-                    'type': 'entity'
-                })
-        return entities
+    """Parse EU consolidated format with correct structure"""
+    entities = []
+    ns = {'eu': 'http://eu.europa.ec/fpi/fsd/export'}
     
+    for entity_elem in root.findall('.//eu:sanctionEntity', ns):
+        names = []
+        country = None
+        entity_type = 'unknown'
+        
+        # Extract names from nameAlias - FIXED: look deeper
+        for name_alias in entity_elem.findall('.//eu:nameAlias', ns):
+            # Look for wholeName elements
+            for whole_name in name_alias.findall('.//eu:wholeName', ns):
+                if whole_name.text and whole_name.text.strip():
+                    name = whole_name.text.strip()
+                    if not self._contains_illegal_content(name):
+                        names.append(name)
+            
+            # Also check for other name elements
+            for name_elem in name_alias.iter():
+                if (name_elem != name_alias and 
+                    name_elem.text and name_elem.text.strip() and
+                    len(name_elem.text.strip()) > 3 and
+                    'name' in name_elem.tag.lower()):
+                    name = name_elem.text.strip()
+                    if not self._contains_illegal_content(name):
+                        names.append(name)
+        
+        # Extract country
+        for country_elem in entity_elem.findall('.//eu:country', ns):
+            if country_elem.text:
+                country = country_elem.text.strip()
+        
+        # Extract subject type
+        for subject_elem in entity_elem.findall('.//eu:subjectType', ns):
+            code = subject_elem.get('code', '').lower()
+            if 'person' in code:
+                entity_type = 'individual'
+            elif 'entity' in code or 'organisation' in code:
+                entity_type = 'entity'
+        
+        if names:
+            entities.append({
+                'source': source,
+                'list_type': 'EU',
+                'names': names,
+                'primary_name': names[0],
+                'country': country,
+                'type': entity_type
+            })
+    
+    return entities
+
     def _parse_un_format(self, root, source: str) -> List[Dict[str, Any]]:
-        """Parse UN consolidated list"""
-        entities = []
+    """Parse UN consolidated list with correct Name6 structure"""
+    entities = []
+    
+    for designation in root.findall('.//Designation'):
+        names = []
+        country = None
         
-        # Individuals
-        for individual in root.findall('.//INDIVIDUAL'):
-            names = []
-            first_name = self._get_text(individual, './/FIRST_NAME')
-            second_name = self._get_text(individual, './/SECOND_NAME')
-            
-            if first_name and second_name:
-                names.append(f"{first_name} {second_name}".strip())
-            elif first_name:
-                names.append(first_name)
-            
-            for alias in individual.findall('.//ALIAS_NAME'):
-                if alias.text:
-                    names.append(alias.text.strip())
-            
-            if names:
-                entities.append({
-                    'source': source,
-                    'list_type': 'UN',
-                    'names': names,
-                    'primary_name': names[0],
-                    'type': 'individual'
-                })
+        # Extract names from Name6 elements
+        for name_elem in designation.findall('.//Name6'):
+            if name_elem.text and name_elem.text.strip():
+                name = name_elem.text.strip()
+                if not self._contains_illegal_content(name):
+                    names.append(name)
         
-        # Entities
-        for entity_elem in root.findall('.//ENTITY'):
-            name = self._get_text(entity_elem, './/FIRST_NAME')
-            if name:
-                entities.append({
-                    'source': source,
-                    'list_type': 'UN',
-                    'names': [name],
-                    'primary_name': name,
-                    'type': 'entity'
-                })
+        # Extract country from Country elements
+        for country_elem in designation.findall('.//Country'):
+            if country_elem.text:
+                country = country_elem.text.strip()
         
+        # Determine type from IndividualEntityShip
+        entity_type = 'unknown'
+        for type_elem in designation.findall('.//IndividualEntityShip'):
+            if type_elem.text:
+                type_text = type_elem.text.strip().lower()
+                if 'individual' in type_text:
+                    entity_type = 'individual'
+                elif 'entity' in type_text:
+                    entity_type = 'entity'
+        
+        if names:
+            entities.append({
+                'source': source,
+                'list_type': 'UN',
+                'names': names,
+                'primary_name': names[0],
+                'country': country,
+                'type': entity_type
+            })
+    
+    return entities
+
+    def _parse_ofac_format(self, root, source: str) -> List[Dict[str, Any]]:
+    """Parse OFAC SDN Enhanced XML format"""
+    entities = []
+    ns = {'ofac': 'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/ENHANCED_XML'}
+    
+    # Find entities container
+    entities_container = root.find('.//ofac:entities', ns)
+    if entities_container is None:
         return entities
     
-    def _parse_ofac_format(self, root, source: str) -> List[Dict[str, Any]]:
-        """Parse OFAC SDN list"""
-        entities = []
-        ns = {'ofac': 'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/XML'}
+    for entity_elem in entities_container.findall('.//ofac:entity', ns):
+        names = []
+        country = None
+        entity_type = 'unknown'
         
-        for sdn_entry in root.findall('.//ofac:sdnEntry', ns):
-            names = []
-            last_name = self._get_text(sdn_entry, './/ofac:lastName', ns)
-            if last_name:
-                names.append(last_name)
-            
-            first_name = self._get_text(sdn_entry, './/ofac:firstName', ns)
-            if first_name and last_name:
-                names.append(f"{first_name} {last_name}")
-            
-            if names:
-                entities.append({
-                    'source': source,
-                    'list_type': 'OFAC',
-                    'names': names,
-                    'primary_name': names[0],
-                    'type': 'individual' if first_name else 'entity'
-                })
-        return entities
+        # Extract names from name elements
+        for name_elem in entity_elem.findall('.//ofac:name', ns):
+            # Look for aka elements with actual name content
+            for aka_elem in name_elem.findall('.//ofac:aka', ns):
+                # Try various name fields
+                for name_field in ['ofac:primaryDisplayName', 'ofac:alias', 'ofac:formattedName']:
+                    for name_val in aka_elem.findall(f'.//{name_field}', ns):
+                        if name_val.text and name_val.text.strip():
+                            name = name_val.text.strip()
+                            if not self._contains_illegal_content(name):
+                                names.append(name)
+                
+                # Also check for any text content in aka
+                if aka_elem.text and aka_elem.text.strip():
+                    name = aka_elem.text.strip()
+                    if not self._contains_illegal_content(name):
+                        names.append(name)
+        
+        # Extract country
+        for country_elem in entity_elem.findall('.//ofac:country', ns):
+            if country_elem.text:
+                country = country_elem.text.strip()
+        
+        # Determine entity type
+        for type_elem in entity_elem.findall('.//ofac:type', ns):
+            if type_elem.text:
+                type_text = type_elem.text.strip().lower()
+                if 'individual' in type_text or 'person' in type_text:
+                    entity_type = 'individual'
+                elif 'entity' in type_text or 'organization' in type_text or 'business' in type_text:
+                    entity_type = 'entity'
+        
+        if names:
+            entities.append({
+                'source': source,
+                'list_type': 'OFAC',
+                'names': names,
+                'primary_name': names[0],
+                'country': country,
+                'type': entity_type
+            })
+    
+    return entities
+    
+    def _contains_illegal_content(self, text: str) -> bool:
+        """Filter out potentially illegal or inappropriate content"""
+        if not text:
+            return True
+        
+        # Email patterns
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        if re.search(email_pattern, text):
+            return True
+        
+        # URLs
+        url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+        if re.search(url_pattern, text):
+            return True
+        
+        # Social media handles
+        social_pattern = r'@\w+'
+        if re.search(social_pattern, text):
+            return True
+        
+        # Script injection attempts
+        script_patterns = [
+            r'<script', r'javascript:', r'on\w+\s*=', r'eval\s*\(',
+            r'exec\s*\(', r'__import__', r'function\s*\('
+        ]
+        for pattern in script_patterns:
+            if re.search(pattern, text, re.IGNORECASE):
+                return True
+        
+        # Extremely short or long names (likely garbage)
+        if len(text.strip()) < 2 or len(text.strip()) > 200:
+            return True
+        
+        # Names that are just numbers or symbols
+        if not any(c.isalpha() for c in text):
+            return True
+        
+        return False
     
     def _parse_generic(self, root, source: str) -> List[Dict[str, Any]]:
-        """Generic fallback parser"""
+        """Generic fallback parser - improved version"""
         entities = []
+        
+        # Look for elements that contain substantial text content
         for elem in root.iter():
-            if (elem.text and len(elem.text.strip()) > 2 and 
-                any(keyword in elem.tag.lower() for keyword in ['name', 'title'])):
-                entities.append({
-                    'source': source,
-                    'list_type': 'Generic',
-                    'names': [elem.text.strip()],
-                    'primary_name': elem.text.strip(),
-                    'type': 'unknown'
-                })
+            if elem.text and len(elem.text.strip()) > 2:
+                text = elem.text.strip()
+                
+                # More permissive name detection
+                if (len(text) >= 3 and len(text) <= 200 and  # Reasonable length
+                    not text.startswith(('http', 'www.', '@')) and  # Not URLs/emails
+                    not re.match(r'^\d+(\.\d+)*$', text) and  # Not version numbers
+                    any(c.isalpha() for c in text)):  # Contains letters
+                    
+                    # Check if element tag suggests it's a name
+                    tag_lower = elem.tag.lower()
+                    if any(keyword in tag_lower for keyword in [
+                        'name', 'title', 'entity', 'individual', 'person', 
+                        'organization', 'company', 'designation', 'alias'
+                    ]):
+                        entities.append({
+                            'source': source,
+                            'list_type': 'Generic',
+                            'names': [text],
+                            'primary_name': text,
+                            'type': 'unknown'
+                        })
+        
+        # Also try to find structured data with attributes
+        for elem in root.iter():
+            if elem.attrib:
+                name_attrs = ['name', 'title', 'entity', 'fullName', 'displayName']
+                for attr in name_attrs:
+                    if attr in elem.attrib and elem.attrib[attr].strip():
+                        name = elem.attrib[attr].strip()
+                        if len(name) >= 3 and len(name) <= 200:
+                            entities.append({
+                                'source': source,
+                                'list_type': 'Generic',
+                                'names': [name],
+                                'primary_name': name,
+                                'type': 'unknown'
+                            })
+        
         return entities
     
     def _get_text(self, parent, xpath: str, namespaces=None) -> Optional[str]:
-        elem = parent.find(xpath, namespaces)
-        return elem.text.strip() if elem is not None and elem.text else None
+        """Extract text from XML element"""
+        try:
+            elem = parent.find(xpath, namespaces)
+            return elem.text.strip() if elem is not None and elem.text else None
+        except:
+            return None
+
 
 class OptimalFuzzyMatcher:
-    """Optimal fuzzy matching"""
+    """Optimized fuzzy matching for sanctions screening"""
     
-    def __init__(self, sanctions_entities):
+    def __init__(self, sanctions_entities: List[Dict[str, Any]]):
         self.sanctions_entities = sanctions_entities
-        self.all_names = []
-        
-        # Build name index
-        for entity in sanctions_entities:
-            for name in entity.get('names', []):
-                if name and len(name.strip()) > 1:
-                    self.all_names.append((self._normalize_name(name), entity, name))
+        self.name_index = []
+        self._build_index()
     
     def _normalize_name(self, name: str) -> str:
-        """Advanced name normalization"""
+        """Normalize name for better matching"""
         if not name:
             return ""
         
-        # Basic cleaning
-        name = str(name).lower().strip()
-        name = unidecode(name)  # Remove accents
+        # Convert to lowercase, remove extra spaces, normalize unicode
+        normalized = re.sub(r'\s+', ' ', name.lower().strip())
+        return normalized
+    
+    def _tokenize(self, name: str) -> List[str]:
+        """Tokenize name into words"""
+        return [token for token in re.split(r'\s+', name) if token]
+    
+    def _build_index(self):
+        """Build optimized search index"""
+        for entity in self.sanctions_entities:
+            for name in entity.get('names', []):
+                normalized = self._normalize_name(name)
+                tokens = self._tokenize(normalized)
+                
+                self.name_index.append({
+                    'normalized': normalized,
+                    'tokens': tokens,
+                    'entity': entity,
+                    'original_name': name
+                })
+    
+    def _layer1_exact_match(self, query: str, target: str) -> Optional[float]:
+        """Exact match layer"""
+        if query == target:
+            return 100.0
+        return None
+    
+    def _layer2_token_match(self, query_tokens: List[str], target_tokens: List[str]) -> Optional[float]:
+        """Token-based matching"""
+        if not query_tokens or not target_tokens:
+            return None
         
-        # Remove legal entities
-        legal_entities = ['ltd', 'limited', 'inc', 'incorporated', 'corp', 'corporation',
-                         'llc', 'gmbh', 'sa', 'nv', 'plc', 'co', 'company', 'group']
-        for entity in legal_entities:
-            name = re.sub(r'\b' + re.escape(entity) + r'\b', '', name)
+        # Check for complete token overlap
+        query_set = set(query_tokens)
+        target_set = set(target_tokens)
         
-        # Clean up
-        name = re.sub(r'[^\w\s]', ' ', name)
-        name = re.sub(r'\s+', ' ', name).strip()
+        intersection = query_set.intersection(target_set)
+        union = query_set.union(target_set)
         
-        # Remove stop words and sort for consistent matching
-        stop_words = {'the', 'and', 'of', 'for', 'with', 'from', 'to', 'in', 'a', 'an'}
-        words = [w for w in name.split() if w not in stop_words and len(w) > 1]
-        words_sorted = sorted(words)
+        if len(intersection) == len(query_set):  # All query tokens found
+            return 95.0
         
-        return ' '.join(words_sorted)
+        # Partial overlap scoring
+        if len(intersection) >= 2:
+            ratio = len(intersection) / len(union)
+            return min(90.0, ratio * 100)
+        
+        return None
+    
+    def _layer3_phonetic_match(self, query: str, query_tokens: List[str], 
+                              target: str, target_tokens: List[str]) -> Optional[float]:
+        """Phonetic matching using soundex-like logic"""
+        # Simple phonetic matching - first letters of words
+        if len(query_tokens) >= 2 and len(target_tokens) >= 2:
+            query_initials = ''.join(word[0] for word in query_tokens if word)
+            target_initials = ''.join(word[0] for word in target_tokens if word)
+            
+            if query_initials == target_initials and len(query_initials) >= 3:
+                return 85.0
+        
+        return None
+    
+    def _layer4_fuzzy_match(self, query: str, target: str) -> Optional[float]:
+        """Final fuzzy matching layer"""
+        try:
+            from fuzzywuzzy import fuzz
+        except ImportError:
+            return None
+        
+        # Use fuzzy matching as final fallback
+        score = max(
+            fuzz.token_sort_ratio(query, target),
+            fuzz.token_set_ratio(query, target)
+        )
+        
+        return score if score >= 70 else None
     
     def match_entity(self, search_name: str, entity_type: str = None, threshold: int = 70) -> List[Dict[str, Any]]:
-        """Match with optimal strategy"""
+        """Find matches for a given name"""
+        
         if not search_name:
             return []
         
@@ -341,6 +551,7 @@ class OptimalFuzzyMatcher:
         matches.sort(key=lambda x: x['score'], reverse=True)
         return matches[:10]
 
+
 # Global instances
 sanctions_service = None
 fuzzy_matcher = None
@@ -378,7 +589,6 @@ def screen_entity(name: str, entity_type: str = None, threshold: int = 70):
         return []
     
     return fuzzy_matcher.match_entity(name, entity_type, threshold)
-
 
 def reload_sanctions_data():
     """Force reload sanctions data"""
