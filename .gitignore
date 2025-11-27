@@ -44,11 +44,3 @@ temp/
 secrets.json
 config.local.py
 
-# Sanctions data files (local use only)
-*.xml
-*.XML
-data/
-ofac_consolidated.xml
-uk_consolidated.xml
-un_consolidated.xml
-eu_consolidated.xml
