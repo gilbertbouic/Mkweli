@@ -14,106 +14,170 @@
     <!-- File Status Section -->
     <div class="card mb-4">
         <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="bi bi-folder-check"></i> Current Data Files Status</h5>
+            <h5 class="mb-0"><i class="bi bi-folder-check"></i> Current Data Status</h5>
         </div>
         <div class="card-body">
-            <div class="row">
-                <div class="col-md-3">
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-file-earmark-xml text-success fs-4 me-3"></i>
-                        <div>
-                            <strong>UN Consolidated</strong><br>
-                            <small class="text-success">File present</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-file-earmark-xml text-success fs-4 me-3"></i>
-                        <div>
-                            <strong>UK Consolidated</strong><br>
-                            <small class="text-success">File present</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-file-earmark-xml text-success fs-4 me-3"></i>
-                        <div>
-                            <strong>OFAC Consolidated</strong><br>
-                            <small class="text-success">File present</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-file-earmark-xml text-success fs-4 me-3"></i>
-                        <div>
-                            <strong>EU Consolidated</strong><br>
-                            <small class="text-success">File present</small>
-                        </div>
-                    </div>
-                </div>
+            <div id="sanctions-status">
+                <p class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading status...</p>
+            </div>
+            <div class="text-center mt-3">
+                <button type="button" class="btn btn-lg btn-success" id="reloadListsBtn">
+                    <i class="bi bi-arrow-clockwise"></i> Reload Lists from data/ folder
+                </button>
+                <p class="text-muted mt-2 mb-0">Place/update files in data/ folder and click Reload.</p>
             </div>
         </div>
     </div>
 
-    <!-- Update Button -->
-    <div class="card mb-5">
-        <div class="card-body text-center">
-            <form method="POST" action="{{ url_for('update_lists') }}">
-                <button type="submit" class="btn btn-lg btn-success hover-shadow">
-                    <i class="bi bi-arrow-clockwise"></i> Update Lists from data/ folder
-                </button>
-                <p class="text-muted mt-2 mb-0">Place files in data/ folder and click Update.</p>
-            </form>
+    <!-- Update Instructions -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0"><i class="bi bi-clock-history"></i> Update Schedule (Every 14 Days)</h5>
+        </div>
+        <div class="card-body">
+            <p>To ensure compliance, update your sanctions lists every <strong>14 days</strong>:</p>
+            <ol>
+                <li>Download fresh XML files from the sources below</li>
+                <li>Rename files exactly as specified</li>
+                <li>Replace old files in the <code>data/</code> folder</li>
+                <li>Click <strong>"Reload Lists"</strong> button above</li>
+            </ol>
+            <p class="text-muted mb-0">The system automatically detects changed files and updates the database.</p>
         </div>
     </div>
 
+    <h4 class="mb-3">Download Sources</h4>
     <div class="row g-4 mb-5">
         <div class="col-md-6">
-            <div class="card border-primary shadow-sm hover-shadow">
+            <div class="card border-primary shadow-sm hover-shadow h-100">
                 <div class="card-body">
-                    <h5 class="card-title text-primary">UN Consolidated List</h5>
-                    <p><strong>Link:</strong> <a href="https://un.org/securitycouncil/en/content/un-sc-consolidated-list" target="_blank">UN Security Council</a></p>
-                    <p><strong>Download:</strong> Click XML → file name usually <code>consolidatedLegacyByPRN.xml</code></p>
-                    <p><strong>Rename to:</strong> <code>un_consolidated.xml</code></p>
+                    <h5 class="card-title text-primary">🇺🇳 UN Consolidated List</h5>
+                    <p><strong>Download:</strong> <a href="https://main.un.org/securitycouncil/en/content/un-sc-consolidated-list" target="_blank">UN Security Council</a></p>
+                    <p><strong>File name:</strong> Usually <code>consolidatedLegacyByPRN.xml</code></p>
+                    <p class="mb-0"><strong>Rename to:</strong> <code class="bg-light px-2 py-1">un_consolidated.xml</code></p>
                 </div>
             </div>
         </div>
 
         <div class="col-md-6">
-            <div class="card border-warning shadow-sm hover-shadow">
+            <div class="card border-warning shadow-sm hover-shadow h-100">
                 <div class="card-body">
-                    <h5 class="card-title text-warning">UK Consolidated List</h5>
-                    <p><strong>Link:</strong> <a href="https://www.gov.uk/government/publications/the-uk-sanctions-list" target="_blank">GOV.UK</a></p>
-                    <p><strong>Download:</strong> "UK Sanctions List (XML)" button</p>
-                    <p><strong>Rename to:</strong> <code>uk_consolidated.xml</code></p>
+                    <h5 class="card-title text-warning">🇬🇧 UK Consolidated List</h5>
+                    <p><strong>Download:</strong> <a href="https://www.gov.uk/government/publications/the-uk-sanctions-list" target="_blank">GOV.UK Sanctions</a></p>
+                    <p><strong>File name:</strong> Usually <code>UK-Sanctions-List.xml</code></p>
+                    <p class="mb-0"><strong>Rename to:</strong> <code class="bg-light px-2 py-1">uk_consolidated.xml</code></p>
                 </div>
             </div>
         </div>
 
         <div class="col-md-6">
-            <div class="card border-success shadow-sm hover-shadow">
+            <div class="card border-success shadow-sm hover-shadow h-100">
                 <div class="card-body">
-                    <h5 class="card-title text-success">OFAC Consolidated List</h5>
-                    <p><strong>Link:</strong> <a href="https://sanctionslist.ofac.treasury.gov/Home/SdnList" target="_blank">OFAC</a></p>
-                    <p><strong>Download:</strong> Click "SDN.XML" or "Advanced SDN XML"</p>
-                    <p><strong>Rename to:</strong> <code>ofac_consolidated.xml</code></p>
+                    <h5 class="card-title text-success">🇺🇸 OFAC SDN List</h5>
+                    <p><strong>Download:</strong> <a href="https://sanctionslist.ofac.treas.gov/Home/SdnList" target="_blank">OFAC Treasury</a></p>
+                    <p><strong>File name:</strong> Usually <code>sdn.xml</code></p>
+                    <p class="mb-0"><strong>Rename to:</strong> <code class="bg-light px-2 py-1">ofac_consolidated.xml</code></p>
                 </div>
             </div>
         </div>
 
         <div class="col-md-6">
-            <div class="card border-danger shadow-sm hover-shadow">
+            <div class="card border-danger shadow-sm hover-shadow h-100">
                 <div class="card-body">
-                    <h5 class="card-title text-danger">EU Consolidated List</h5>
-                    <p><strong>Link:</strong> <a href="https://data.europa.eu/data/datasets/consolidated-list-of-persons-groups-and-entities-subject-to-eu-financial-sanctions?locale=en" target="_blank">EU Data Portal</a></p>
-                    <p><strong>Download:</strong> Download XML version</p>
-                    <p><strong>Rename to:</strong> <code>eu_consolidated.xml</code></p>
+                    <h5 class="card-title text-danger">🇪🇺 EU Consolidated List</h5>
+                    <p><strong>Download:</strong> <a href="https://www.sanctionsmap.eu" target="_blank">EU Sanctions Map</a></p>
+                    <p><strong>Navigate:</strong> Consolidated lists → Financial Sanctions File 1.0 → Download XML</p>
+                    <p class="mb-0"><strong>Rename to:</strong> <code class="bg-light px-2 py-1">eu_consolidated.xml</code></p>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+// Load current sanctions status
+function loadSanctionsStatus() {
+    fetch('/api/dashboard/sanctions-count')
+        .then(response => response.json())
+        .then(data => {
+            let html = '<div class="row text-center">';
+            
+            if (data.count && data.count > 0) {
+                html += `<div class="col-md-4">
+                    <h3 class="text-success">${data.count.toLocaleString()}</h3>
+                    <p>Total Entities Loaded</p>
+                </div>`;
+                
+                // Show sources breakdown
+                if (data.sources) {
+                    let sourcesList = '';
+                    for (const [source, count] of Object.entries(data.sources)) {
+                        sourcesList += `<small class="d-block">${source}: ${count.toLocaleString()}</small>`;
+                    }
+                    html += `<div class="col-md-4">
+                        <h5>By Source</h5>
+                        ${sourcesList}
+                    </div>`;
+                }
+                
+                // Load date
+                fetch('/api/sanctions/last-loaded')
+                    .then(response => response.json())
+                    .then(dateData => {
+                        const lastLoaded = dateData.formatted || 'Unknown';
+                        document.getElementById('sanctions-date').innerHTML = `<strong>Last Loaded:</strong> ${lastLoaded}`;
+                    });
+                
+                html += `<div class="col-md-4">
+                    <p id="sanctions-date">Loading date...</p>
+                </div>`;
+            } else {
+                html += `<div class="col-12">
+                    <div class="alert alert-warning">
+                        <strong>No sanctions data loaded.</strong><br>
+                        Please add XML files to the data/ folder and click Reload Lists.
+                    </div>
+                </div>`;
+            }
+            
+            html += '</div>';
+            document.getElementById('sanctions-status').innerHTML = html;
+        })
+        .catch(error => {
+            document.getElementById('sanctions-status').innerHTML = 
+                '<div class="alert alert-danger">Error loading status. Please refresh the page.</div>';
+        });
+}
+
+// Reload sanctions lists
+document.getElementById('reloadListsBtn').addEventListener('click', function() {
+    const btn = this;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reloading...';
+    btn.disabled = true;
+    
+    fetch('/api/sanctions/reload', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Success: ' + data.message + '\nTotal entities: ' + (data.count || 0));
+            loadSanctionsStatus();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        alert('Error reloading sanctions: ' + error);
+    })
+    .finally(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+});
+
+// Load status on page load
+loadSanctionsStatus();
+</script>
 {% endblock %}

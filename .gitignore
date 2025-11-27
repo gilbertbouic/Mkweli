@@ -20,9 +20,17 @@ __pycache__/
 
 # Uploads & Logs (user-generated)
 uploads/*
-!uploads/.gitkeep  # keep folder structure
+!uploads/.gitkeep
 logs/*
 !logs/.gitkeep
+
+# Data folder (keep structure, not XML files)
+data/*
+!data/.gitkeep
+
+# Cache files
+*.pkl
+*.cache
 
 # Test files
 test.csv
@@ -36,3 +44,8 @@ test.csv
 # OS
 .DS_Store
 Thumbs.db
+
+# Backup files
+*.backup
+*_OLD.md
+
