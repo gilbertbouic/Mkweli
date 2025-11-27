@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 REM ==============================================================================
 REM MkweliAML - Run Script for Windows
 REM ==============================================================================
@@ -54,7 +55,7 @@ if exist "data\*.xml" (
         set /a XML_COUNT+=1
     )
 )
-if %XML_COUNT%==0 (
+if !XML_COUNT!==0 (
     echo.
     echo ! No sanctions XML files found in data\ folder!
     echo   Download the following files and place them in data\:
@@ -74,7 +75,7 @@ if %XML_COUNT%==0 (
     echo   The app will start but screening requires these files.
     echo.
 ) else (
-    echo + Found %XML_COUNT% sanctions XML file(s) in data\
+    echo + Found !XML_COUNT! sanctions XML file(s) in data\
 )
 
 REM 7. Start the application
