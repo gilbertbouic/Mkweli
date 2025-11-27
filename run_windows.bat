@@ -49,8 +49,12 @@ if not exist "data" (
 
 REM 6. Check for sanctions XML files
 set XML_COUNT=0
-for %%f in (data\*.xml) do set /a XML_COUNT+=1
-if %XML_COUNT% equ 0 (
+if exist "data\*.xml" (
+    for %%f in (data\*.xml) do (
+        set /a XML_COUNT+=1
+    )
+)
+if %XML_COUNT%==0 (
     echo.
     echo ! No sanctions XML files found in data\ folder!
     echo   Download the following files and place them in data\:

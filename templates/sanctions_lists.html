@@ -6,6 +6,9 @@
 <div class="container mt-5">
     <h1 class="mb-4 fw-bold" style="color: #561217;">Sanctions Lists Management</h1>
     
+    <!-- Status Message Container -->
+    <div id="status-message"></div>
+    
     <div class="alert alert-info" role="alert">
         <strong>100% Manual & Offline Tool</strong><br>
         Download the latest XML files from official sources, rename them exactly as shown below, and place them in the <code>data/</code> folder.
@@ -120,14 +123,6 @@ function loadSanctionsStatus() {
                     </div>`;
                 }
                 
-                // Load date
-                fetch('/api/sanctions/last-loaded')
-                    .then(response => response.json())
-                    .then(dateData => {
-                        const lastLoaded = dateData.formatted || 'Unknown';
-                        document.getElementById('sanctions-date').innerHTML = `<strong>Last Loaded:</strong> ${lastLoaded}`;
-                    });
-                
                 html += `<div class="col-md-4">
                     <p id="sanctions-date">Loading date...</p>
                 </div>`;
@@ -142,11 +137,45 @@ function loadSanctionsStatus() {
             
             html += '</div>';
             document.getElementById('sanctions-status').innerHTML = html;
+            
+            // Load last loaded date after HTML is rendered
+            if (data.count && data.count > 0) {
+                fetch('/api/sanctions/last-loaded')
+                    .then(response => response.json())
+                    .then(dateData => {
+                        const dateElem = document.getElementById('sanctions-date');
+                        if (dateElem) {
+                            const lastLoaded = dateData.formatted || 'Unknown';
+                            dateElem.innerHTML = `<strong>Last Loaded:</strong> ${lastLoaded}`;
+                        }
+                    })
+                    .catch(error => {
+                        const dateElem = document.getElementById('sanctions-date');
+                        if (dateElem) {
+                            dateElem.innerHTML = '<strong>Last Loaded:</strong> Unknown';
+                        }
+                    });
+            }
         })
         .catch(error => {
             document.getElementById('sanctions-status').innerHTML = 
                 '<div class="alert alert-danger">Error loading status. Please refresh the page.</div>';
         });
+}
+
+// Show status message
+function showStatusMessage(message, type) {
+    const statusDiv = document.getElementById('status-message');
+    statusDiv.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" onclick="this.parentElement.remove()"></button>
+    </div>`;
+    // Auto-hide success messages after 5 seconds
+    if (type === 'success') {
+        setTimeout(() => {
+            statusDiv.innerHTML = '';
+        }, 5000);
+    }
 }
 
 // Reload sanctions lists
@@ -162,14 +191,14 @@ document.getElementById('reloadListsBtn').addEventListener('click', function() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Success: ' + data.message + '\nTotal entities: ' + (data.count || 0));
+            showStatusMessage('✅ ' + data.message + ' - Total entities: ' + (data.count || 0), 'success');
             loadSanctionsStatus();
         } else {
-            alert('Error: ' + (data.error || 'Unknown error'));
+            showStatusMessage('❌ Error: ' + (data.error || 'Unknown error'), 'danger');
         }
     })
     .catch(error => {
-        alert('Error reloading sanctions: ' + error);
+        showStatusMessage('❌ Error reloading sanctions: ' + error, 'danger');
     })
     .finally(() => {
         btn.innerHTML = originalText;
