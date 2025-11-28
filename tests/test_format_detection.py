@@ -5,6 +5,7 @@ This module tests the _detect_format method which identifies
 the sanctions list format based on XML structure rather than filename.
 """
 import unittest
+import unittest.mock
 import xml.etree.ElementTree as ET
 import sys
 import os
@@ -19,11 +20,10 @@ class TestFormatDetection(unittest.TestCase):
     """Tests for the _detect_format method in SanctionsService"""
     
     def setUp(self):
-        """Create a SanctionsService instance for testing"""
-        # Use a non-existent data directory to avoid loading actual files
-        self.service = SanctionsService.__new__(SanctionsService)
-        self.service.data_dir = '/nonexistent'
-        self.service.sanctions_entities = []
+        """Create a SanctionsService instance for testing without loading data"""
+        # Patch the initialization to skip loading actual files
+        with unittest.mock.patch.object(SanctionsService, '_load_or_parse_sanctions'):
+            self.service = SanctionsService(data_dir='/nonexistent')
     
     def test_detect_eu_format_by_namespace(self):
         """Test EU format detection via namespace"""

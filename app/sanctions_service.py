@@ -166,44 +166,57 @@ class SanctionsService:
         
         # UK/UN detection: both use Designations root
         if root_tag == 'Designations':
-            # Check for distinguishing elements
+            # Check for distinguishing elements by sampling multiple designations
+            # UN format marker: has Name6 AND IndividualEntityShip elements
+            # UK format marker: has Name elements with direct text content OR
+            #                   has Name6 without IndividualEntityShip
             has_name6 = False
             has_individual_entity_ship = False
-            has_plain_name = False  # <Name> with direct text content (not <Name><Name6>...)
+            has_plain_name = False  # <Name> with direct text content
             
-            for designation in root.findall('.//Designation'):
-                # Check for Name6 elements
+            # Sample up to 10 designations for efficiency
+            designations = root.findall('.//Designation')[:10]
+            
+            for designation in designations:
+                # Check for Name6 elements (common in both UK OFSI and UN formats)
                 name6_elems = designation.findall('.//Name6')
                 if name6_elems:
                     has_name6 = True
                 
-                # Check for IndividualEntityShip elements
+                # Check for IndividualEntityShip elements (UN format marker)
                 ies_elems = designation.findall('.//IndividualEntityShip')
                 if ies_elems:
                     has_individual_entity_ship = True
                 
-                # Check for plain Name elements with text content
+                # Check for plain Name elements with direct text content
+                # This indicates older UK format where Name has text, not Name6 children
                 for name_elem in designation.findall('.//Name'):
-                    # If Name has direct text (not children like Name6), it's UK format
+                    # If Name element has direct text content (not just whitespace around children)
                     if name_elem.text and name_elem.text.strip():
-                        has_plain_name = True
-                        break
+                        # Verify it's not just whitespace before Name6 element
+                        text = name_elem.text.strip()
+                        if len(text) >= 2 and any(c.isalpha() for c in text):
+                            has_plain_name = True
+                            break
                 
-                # Early exit if we have enough info
+                # Early exit if we've determined UN format
                 if has_name6 and has_individual_entity_ship:
                     break
             
             # UN format: has Name6 AND IndividualEntityShip elements
+            # This is the primary distinguisher from UK format
             if has_name6 and has_individual_entity_ship:
                 logger.info("Detected UN format (contains Name6 and IndividualEntityShip elements)")
                 return 'UN'
             
-            # UK format: has plain Name elements OR has Name6 without IndividualEntityShip
+            # UK format: has plain Name text content OR has Name6 without IndividualEntityShip
+            # The UK parser handles both Name and Name6 extraction
             if has_plain_name or (has_name6 and not has_individual_entity_ship):
                 logger.info("Detected UK format (Designations with Name elements)")
                 return 'UK'
             
             # Default to UK for Designations format (backward compatibility)
+            # The UK parser is flexible enough to handle various Designation formats
             logger.info("Detected UK format (Designations root tag, defaulting)")
             return 'UK'
         
