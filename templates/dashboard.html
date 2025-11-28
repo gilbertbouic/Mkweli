@@ -172,7 +172,7 @@ document.getElementById('screenButton').addEventListener('click', function() {
                         </div>
                         <div class="match-scores">
                             <span class="score">Match Score: ${match.score.toFixed(1)}%</span>
-                            <span class="risk-score">Risk Score: ${(match.risk_score || match.score).toFixed(1)}</span>
+                            <span class="risk-score">Risk Score: ${(match.risk_score || match.score).toFixed(1)}%</span>
                         </div>
                         <div class="match-details">
                             <p><strong>Sanctioning Authority:</strong> ${match.sanctioning_authority || match.entity.list_type}</p>

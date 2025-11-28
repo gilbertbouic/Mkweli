@@ -283,12 +283,14 @@ class EnhancedSanctionsMatcher:
             Dictionary with risk score details
         """
         if not list_types:
+            # When list_types is empty, we cannot determine multi-jurisdictional status
+            # Return None to indicate this status is unknown
             return {
                 'risk_score': match_score,
                 'risk_level': 'Unknown',
                 'authorities': [],
                 'tier': 3,
-                'is_multi_jurisdictional': False
+                'is_multi_jurisdictional': None  # None indicates unknown status
             }
         
         # Get unique list types
