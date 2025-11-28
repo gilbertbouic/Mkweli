@@ -23,6 +23,15 @@ class SanctionsService:
         self.all_names = []  # For fuzzy matching optimization
         self._load_or_parse_sanctions()
     
+    def _get_xml_files(self) -> List[Path]:
+        """Get all XML files in data directory with case-insensitive extension matching"""
+        xml_files = []
+        if self.data_dir.exists():
+            for file_path in self.data_dir.iterdir():
+                if file_path.is_file() and file_path.suffix.lower() == '.xml':
+                    xml_files.append(file_path)
+        return xml_files
+    
     def _get_file_hash(self, file_path: Path) -> str:
         """Get MD5 hash of file to detect changes"""
         hasher = hashlib.md5()
@@ -33,7 +42,7 @@ class SanctionsService:
     
     def _have_files_changed(self) -> bool:
         """Check if any XML files have changed since last load"""
-        xml_files = list(self.data_dir.glob('*.xml'))
+        xml_files = self._get_xml_files()
         
         if len(xml_files) != len(self.file_hashes):
             return True
@@ -79,7 +88,7 @@ class SanctionsService:
             
             # Store file hashes for change detection
             self.file_hashes = {}
-            xml_files = list(self.data_dir.glob('*.xml'))
+            xml_files = self._get_xml_files()
             for xml_file in xml_files:
                 self.file_hashes[xml_file.name] = self._get_file_hash(xml_file)
             
@@ -227,7 +236,7 @@ class SanctionsService:
     def _parse_all_sanctions(self) -> List[Dict[str, Any]]:
         """Parse all XML sanctions files with better error handling"""
         import xml.etree.ElementTree as ET
-        xml_files = list(self.data_dir.glob('*.xml'))
+        xml_files = self._get_xml_files()
         all_entities = []
         
         for xml_file in xml_files:
