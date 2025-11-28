@@ -9,6 +9,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Parser version - increment this when parser logic changes to invalidate cache
+PARSER_VERSION = 2  # v2: Fixed OFAC namespace parsing
+
 class SanctionsService:
     def __init__(self, data_dir="data", cache_file="instance/sanctions_cache.pkl"):
         self.data_dir = Path(data_dir)
@@ -16,6 +19,7 @@ class SanctionsService:
         self.sanctions_entities = []
         self.last_loaded = None
         self.file_hashes = {}
+        self.parser_version = PARSER_VERSION
         self.all_names = []  # For fuzzy matching optimization
         self._load_or_parse_sanctions()
     
@@ -42,22 +46,28 @@ class SanctionsService:
         return False
     
     def _load_or_parse_sanctions(self):
-        """Load from cache or parse fresh with file change detection"""
+        """Load from cache or parse fresh with file change detection and parser version check"""
         cache_valid = False
         
         if os.path.exists(self.cache_file):
             try:
                 with open(self.cache_file, 'rb') as f:
                     cache_data = pickle.load(f)
-                    self.sanctions_entities = cache_data['entities']
-                    self.last_loaded = cache_data['last_loaded']
-                    self.file_hashes = cache_data['file_hashes']
-                
-                if not self._have_files_changed():
-                    cache_valid = True
-                    logger.info(f"Loaded {len(self.sanctions_entities)} entities from cache")
-                else:
-                    logger.info("XML files changed, rebuilding cache")
+                    cached_version = cache_data.get('parser_version', 0)
+                    
+                    # Check if parser version matches
+                    if cached_version != PARSER_VERSION:
+                        logger.info(f"Parser version changed ({cached_version} -> {PARSER_VERSION}), rebuilding cache")
+                    else:
+                        self.sanctions_entities = cache_data['entities']
+                        self.last_loaded = cache_data['last_loaded']
+                        self.file_hashes = cache_data['file_hashes']
+                        
+                        if not self._have_files_changed():
+                            cache_valid = True
+                            logger.info(f"Loaded {len(self.sanctions_entities)} entities from cache")
+                        else:
+                            logger.info("XML files changed, rebuilding cache")
                     
             except Exception as e:
                 logger.warning(f"Cache load failed: {e}")
@@ -73,15 +83,16 @@ class SanctionsService:
             for xml_file in xml_files:
                 self.file_hashes[xml_file.name] = self._get_file_hash(xml_file)
             
-            # Save to cache
+            # Save to cache with parser version
             os.makedirs(os.path.dirname(self.cache_file), exist_ok=True)
             with open(self.cache_file, 'wb') as f:
                 pickle.dump({
                     'entities': self.sanctions_entities,
                     'last_loaded': self.last_loaded,
-                    'file_hashes': self.file_hashes
+                    'file_hashes': self.file_hashes,
+                    'parser_version': PARSER_VERSION
                 }, f)
-            logger.info(f"Cached {len(self.sanctions_entities)} entities")
+            logger.info(f"Cached {len(self.sanctions_entities)} entities (parser v{PARSER_VERSION})")
             
             # Build name index for fuzzy matching
             self._build_name_index()
