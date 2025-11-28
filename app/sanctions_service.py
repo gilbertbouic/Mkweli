@@ -161,159 +161,159 @@ class SanctionsService:
         return entities
     
     def _parse_eu_format(self, root, source: str) -> List[Dict[str, Any]]:
-    """Parse EU consolidated format with correct structure"""
-    entities = []
-    ns = {'eu': 'http://eu.europa.ec/fpi/fsd/export'}
-    
-    for entity_elem in root.findall('.//eu:sanctionEntity', ns):
-        names = []
-        country = None
-        entity_type = 'unknown'
+        """Parse EU consolidated format with correct structure"""
+        entities = []
+        ns = {'eu': 'http://eu.europa.ec/fpi/fsd/export'}
         
-        # Extract names from nameAlias - FIXED: look deeper
-        for name_alias in entity_elem.findall('.//eu:nameAlias', ns):
-            # Look for wholeName elements
-            for whole_name in name_alias.findall('.//eu:wholeName', ns):
-                if whole_name.text and whole_name.text.strip():
-                    name = whole_name.text.strip()
-                    if not self._contains_illegal_content(name):
-                        names.append(name)
+        for entity_elem in root.findall('.//eu:sanctionEntity', ns):
+            names = []
+            country = None
+            entity_type = 'unknown'
             
-            # Also check for other name elements
-            for name_elem in name_alias.iter():
-                if (name_elem != name_alias and 
-                    name_elem.text and name_elem.text.strip() and
-                    len(name_elem.text.strip()) > 3 and
-                    'name' in name_elem.tag.lower()):
+            # Extract names from nameAlias - FIXED: look deeper
+            for name_alias in entity_elem.findall('.//eu:nameAlias', ns):
+                # Look for wholeName elements
+                for whole_name in name_alias.findall('.//eu:wholeName', ns):
+                    if whole_name.text and whole_name.text.strip():
+                        name = whole_name.text.strip()
+                        if not self._contains_illegal_content(name):
+                            names.append(name)
+                
+                # Also check for other name elements
+                for name_elem in name_alias.iter():
+                    if (name_elem != name_alias and 
+                        name_elem.text and name_elem.text.strip() and
+                        len(name_elem.text.strip()) > 3 and
+                        'name' in name_elem.tag.lower()):
+                        name = name_elem.text.strip()
+                        if not self._contains_illegal_content(name):
+                            names.append(name)
+            
+            # Extract country
+            for country_elem in entity_elem.findall('.//eu:country', ns):
+                if country_elem.text:
+                    country = country_elem.text.strip()
+            
+            # Extract subject type
+            for subject_elem in entity_elem.findall('.//eu:subjectType', ns):
+                code = subject_elem.get('code', '').lower()
+                if 'person' in code:
+                    entity_type = 'individual'
+                elif 'entity' in code or 'organisation' in code:
+                    entity_type = 'entity'
+            
+            if names:
+                entities.append({
+                    'source': source,
+                    'list_type': 'EU',
+                    'names': names,
+                    'primary_name': names[0],
+                    'country': country,
+                    'type': entity_type
+                })
+        
+        return entities
+
+    def _parse_un_format(self, root, source: str) -> List[Dict[str, Any]]:
+        """Parse UN consolidated list with correct Name6 structure"""
+        entities = []
+        
+        for designation in root.findall('.//Designation'):
+            names = []
+            country = None
+            
+            # Extract names from Name6 elements
+            for name_elem in designation.findall('.//Name6'):
+                if name_elem.text and name_elem.text.strip():
                     name = name_elem.text.strip()
                     if not self._contains_illegal_content(name):
                         names.append(name)
+            
+            # Extract country from Country elements
+            for country_elem in designation.findall('.//Country'):
+                if country_elem.text:
+                    country = country_elem.text.strip()
+            
+            # Determine type from IndividualEntityShip
+            entity_type = 'unknown'
+            for type_elem in designation.findall('.//IndividualEntityShip'):
+                if type_elem.text:
+                    type_text = type_elem.text.strip().lower()
+                    if 'individual' in type_text:
+                        entity_type = 'individual'
+                    elif 'entity' in type_text:
+                        entity_type = 'entity'
+            
+            if names:
+                entities.append({
+                    'source': source,
+                    'list_type': 'UN',
+                    'names': names,
+                    'primary_name': names[0],
+                    'country': country,
+                    'type': entity_type
+                })
         
-        # Extract country
-        for country_elem in entity_elem.findall('.//eu:country', ns):
-            if country_elem.text:
-                country = country_elem.text.strip()
-        
-        # Extract subject type
-        for subject_elem in entity_elem.findall('.//eu:subjectType', ns):
-            code = subject_elem.get('code', '').lower()
-            if 'person' in code:
-                entity_type = 'individual'
-            elif 'entity' in code or 'organisation' in code:
-                entity_type = 'entity'
-        
-        if names:
-            entities.append({
-                'source': source,
-                'list_type': 'EU',
-                'names': names,
-                'primary_name': names[0],
-                'country': country,
-                'type': entity_type
-            })
-    
-    return entities
-
-    def _parse_un_format(self, root, source: str) -> List[Dict[str, Any]]:
-    """Parse UN consolidated list with correct Name6 structure"""
-    entities = []
-    
-    for designation in root.findall('.//Designation'):
-        names = []
-        country = None
-        
-        # Extract names from Name6 elements
-        for name_elem in designation.findall('.//Name6'):
-            if name_elem.text and name_elem.text.strip():
-                name = name_elem.text.strip()
-                if not self._contains_illegal_content(name):
-                    names.append(name)
-        
-        # Extract country from Country elements
-        for country_elem in designation.findall('.//Country'):
-            if country_elem.text:
-                country = country_elem.text.strip()
-        
-        # Determine type from IndividualEntityShip
-        entity_type = 'unknown'
-        for type_elem in designation.findall('.//IndividualEntityShip'):
-            if type_elem.text:
-                type_text = type_elem.text.strip().lower()
-                if 'individual' in type_text:
-                    entity_type = 'individual'
-                elif 'entity' in type_text:
-                    entity_type = 'entity'
-        
-        if names:
-            entities.append({
-                'source': source,
-                'list_type': 'UN',
-                'names': names,
-                'primary_name': names[0],
-                'country': country,
-                'type': entity_type
-            })
-    
-    return entities
+        return entities
 
     def _parse_ofac_format(self, root, source: str) -> List[Dict[str, Any]]:
-    """Parse OFAC SDN Enhanced XML format"""
-    entities = []
-    ns = {'ofac': 'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/ENHANCED_XML'}
-    
-    # Find entities container
-    entities_container = root.find('.//ofac:entities', ns)
-    if entities_container is None:
+        """Parse OFAC SDN Enhanced XML format"""
+        entities = []
+        ns = {'ofac': 'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/ENHANCED_XML'}
+        
+        # Find entities container
+        entities_container = root.find('.//ofac:entities', ns)
+        if entities_container is None:
+            return entities
+        
+        for entity_elem in entities_container.findall('.//ofac:entity', ns):
+            names = []
+            country = None
+            entity_type = 'unknown'
+            
+            # Extract names from name elements
+            for name_elem in entity_elem.findall('.//ofac:name', ns):
+                # Look for aka elements with actual name content
+                for aka_elem in name_elem.findall('.//ofac:aka', ns):
+                    # Try various name fields
+                    for name_field in ['ofac:primaryDisplayName', 'ofac:alias', 'ofac:formattedName']:
+                        for name_val in aka_elem.findall(f'.//{name_field}', ns):
+                            if name_val.text and name_val.text.strip():
+                                name = name_val.text.strip()
+                                if not self._contains_illegal_content(name):
+                                    names.append(name)
+                    
+                    # Also check for any text content in aka
+                    if aka_elem.text and aka_elem.text.strip():
+                        name = aka_elem.text.strip()
+                        if not self._contains_illegal_content(name):
+                            names.append(name)
+            
+            # Extract country
+            for country_elem in entity_elem.findall('.//ofac:country', ns):
+                if country_elem.text:
+                    country = country_elem.text.strip()
+            
+            # Determine entity type
+            for type_elem in entity_elem.findall('.//ofac:type', ns):
+                if type_elem.text:
+                    type_text = type_elem.text.strip().lower()
+                    if 'individual' in type_text or 'person' in type_text:
+                        entity_type = 'individual'
+                    elif 'entity' in type_text or 'organization' in type_text or 'business' in type_text:
+                        entity_type = 'entity'
+            
+            if names:
+                entities.append({
+                    'source': source,
+                    'list_type': 'OFAC',
+                    'names': names,
+                    'primary_name': names[0],
+                    'country': country,
+                    'type': entity_type
+                })
+        
         return entities
-    
-    for entity_elem in entities_container.findall('.//ofac:entity', ns):
-        names = []
-        country = None
-        entity_type = 'unknown'
-        
-        # Extract names from name elements
-        for name_elem in entity_elem.findall('.//ofac:name', ns):
-            # Look for aka elements with actual name content
-            for aka_elem in name_elem.findall('.//ofac:aka', ns):
-                # Try various name fields
-                for name_field in ['ofac:primaryDisplayName', 'ofac:alias', 'ofac:formattedName']:
-                    for name_val in aka_elem.findall(f'.//{name_field}', ns):
-                        if name_val.text and name_val.text.strip():
-                            name = name_val.text.strip()
-                            if not self._contains_illegal_content(name):
-                                names.append(name)
-                
-                # Also check for any text content in aka
-                if aka_elem.text and aka_elem.text.strip():
-                    name = aka_elem.text.strip()
-                    if not self._contains_illegal_content(name):
-                        names.append(name)
-        
-        # Extract country
-        for country_elem in entity_elem.findall('.//ofac:country', ns):
-            if country_elem.text:
-                country = country_elem.text.strip()
-        
-        # Determine entity type
-        for type_elem in entity_elem.findall('.//ofac:type', ns):
-            if type_elem.text:
-                type_text = type_elem.text.strip().lower()
-                if 'individual' in type_text or 'person' in type_text:
-                    entity_type = 'individual'
-                elif 'entity' in type_text or 'organization' in type_text or 'business' in type_text:
-                    entity_type = 'entity'
-        
-        if names:
-            entities.append({
-                'source': source,
-                'list_type': 'OFAC',
-                'names': names,
-                'primary_name': names[0],
-                'country': country,
-                'type': entity_type
-            })
-    
-    return entities
     
     def _contains_illegal_content(self, text: str) -> bool:
         """Filter out potentially illegal or inappropriate content"""

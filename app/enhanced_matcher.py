@@ -6,6 +6,10 @@ Implements a 4-layer matching hierarchy:
 2. Token-Based Matching (85% threshold) - Token overlap percentage
 3. Phonetic Matching (75% threshold) - Handles abbreviations, transliterations
 4. Fuzzy String Matching (70% threshold) - Token set ratio fallback
+
+Includes tiered risk scoring based on sanctioning authority:
+- Tier 1 (Multilateral Mandate): UN/UNSC - Highest legal legitimacy
+- Tier 2 (Key Ally Jurisdiction): OFAC/US, UK, EU - High risk
 """
 
 import re
@@ -15,6 +19,22 @@ from fuzzywuzzy import fuzz
 from unidecode import unidecode
 
 logger = logging.getLogger(__name__)
+
+
+# Risk tier definitions based on sanctioning authority
+# Tier 1: Multilateral Mandate (highest legal legitimacy)
+# Tier 2: Key Ally Jurisdiction (high risk due to secondary sanctions and global financial exposure)
+RISK_TIERS = {
+    'UN': {'tier': 1, 'tier_name': 'Tier 1 - Multilateral Mandate', 'weight': 1.0, 'authority': 'United Nations Security Council'},
+    'UNSC': {'tier': 1, 'tier_name': 'Tier 1 - Multilateral Mandate', 'weight': 1.0, 'authority': 'United Nations Security Council'},
+    'OFAC': {'tier': 2, 'tier_name': 'Tier 2 - Key Ally Jurisdiction', 'weight': 0.9, 'authority': 'OFAC/US Treasury'},
+    'US': {'tier': 2, 'tier_name': 'Tier 2 - Key Ally Jurisdiction', 'weight': 0.9, 'authority': 'OFAC/US Treasury'},
+    'UK': {'tier': 2, 'tier_name': 'Tier 2 - Key Ally Jurisdiction', 'weight': 0.85, 'authority': 'UK HM Treasury'},
+    'EU': {'tier': 2, 'tier_name': 'Tier 2 - Key Ally Jurisdiction', 'weight': 0.85, 'authority': 'European Union'},
+}
+
+# Default for unknown sources
+DEFAULT_RISK_TIER = {'tier': 3, 'tier_name': 'Tier 3 - Other', 'weight': 0.7, 'authority': 'Other Authority'}
 
 
 # Common abbreviation mappings for business entities
@@ -232,6 +252,103 @@ class EnhancedSanctionsMatcher:
         
         return None
     
+    def _get_risk_tier(self, list_type: str) -> Dict[str, Any]:
+        """
+        Get the risk tier information for a given sanctions list type.
+        
+        Args:
+            list_type: The type of sanctions list (UN, OFAC, UK, EU, etc.)
+        
+        Returns:
+            Dictionary with tier information including tier number, name, weight, and authority
+        """
+        list_type_upper = list_type.upper() if list_type else ''
+        return RISK_TIERS.get(list_type_upper, DEFAULT_RISK_TIER)
+    
+    def _calculate_risk_score(self, match_score: float, list_types: List[str]) -> Dict[str, Any]:
+        """
+        Calculate the overall risk score based on match score and sanctioning authorities.
+        
+        Multi-jurisdictional matches are weighted more heavily:
+        - Multiple Tier 1 (UN) matches: Highest risk
+        - Mix of Tier 1 + Tier 2: Very high risk
+        - Multiple Tier 2 matches: High risk
+        - Single jurisdiction: Standard risk for that tier
+        
+        Args:
+            match_score: The fuzzy match score (0-100)
+            list_types: List of sanctions list types where the match was found
+        
+        Returns:
+            Dictionary with risk score details
+        """
+        if not list_types:
+            # When list_types is empty, we cannot determine multi-jurisdictional status
+            # Return None to indicate this status is unknown
+            return {
+                'risk_score': match_score,
+                'risk_level': 'Unknown',
+                'authorities': [],
+                'tier': 3,
+                'is_multi_jurisdictional': None  # None indicates unknown status
+            }
+        
+        # Get unique list types
+        unique_lists = list(set(lt.upper() for lt in list_types if lt))
+        
+        # Get tier info for each list
+        tier_info = [self._get_risk_tier(lt) for lt in unique_lists]
+        
+        # Check for multi-jurisdictional (more than one authority)
+        is_multi_jurisdictional = len(unique_lists) > 1
+        
+        # Calculate weighted score based on tiers
+        # Base score starts with the match score
+        weighted_score = match_score
+        
+        # Find the highest tier (lowest number = highest risk)
+        highest_tier = min(ti['tier'] for ti in tier_info)
+        
+        # Apply multiplier for multi-jurisdictional matches
+        if is_multi_jurisdictional:
+            # Count how many different tiers are involved
+            tiers_involved = set(ti['tier'] for ti in tier_info)
+            
+            if 1 in tiers_involved and len(tiers_involved) > 1:
+                # Mix of UN + other jurisdictions: Very high risk multiplier
+                weighted_score = min(100, weighted_score * 1.25)
+            elif 1 in tiers_involved:
+                # Multiple UN sources
+                weighted_score = min(100, weighted_score * 1.20)
+            else:
+                # Multiple Tier 2 jurisdictions (e.g., US + UK + EU)
+                weighted_score = min(100, weighted_score * 1.15)
+        
+        # Determine risk level based on weighted score and tier
+        if weighted_score >= 90 and highest_tier == 1:
+            risk_level = 'Critical'
+        elif weighted_score >= 85 or (weighted_score >= 80 and highest_tier == 1):
+            risk_level = 'Very High'
+        elif weighted_score >= 75 or is_multi_jurisdictional:
+            risk_level = 'High'
+        elif weighted_score >= 70:
+            risk_level = 'Medium'
+        else:
+            risk_level = 'Low'
+        
+        # Build authorities list
+        authorities = [ti['authority'] for ti in tier_info]
+        
+        return {
+            'risk_score': round(weighted_score, 1),
+            'risk_level': risk_level,
+            'authorities': authorities,
+            'sanctioning_authorities': ', '.join(unique_lists),
+            'tier': highest_tier,
+            'tier_name': RISK_TIERS.get(unique_lists[0], DEFAULT_RISK_TIER)['tier_name'] if unique_lists else DEFAULT_RISK_TIER['tier_name'],
+            'is_multi_jurisdictional': is_multi_jurisdictional
+        }
+
     def find_matches(self, query: str, threshold: int = 70) -> List[Dict[str, Any]]:
         """
         Find all matches for a query using the 4-layer matching hierarchy.
@@ -241,7 +358,14 @@ class EnhancedSanctionsMatcher:
             threshold: Minimum score threshold (default 70)
         
         Returns:
-            List of matches sorted by score (highest first)
+            List of matches sorted by risk score (highest first), including:
+            - matched_name: The name that matched
+            - score: The fuzzy match score
+            - match_layer: Which matching layer found the match
+            - entity: Entity details including source and type
+            - sanctioning_authority: The sanctions list where the match was found
+            - risk_tier: Risk tier information (Tier 1/2/3)
+            - risk_score: Weighted risk score considering jurisdictions
         """
         if not query or not query.strip():
             return []
@@ -249,8 +373,9 @@ class EnhancedSanctionsMatcher:
         query_normalized = self._normalize_name(query)
         query_tokens = self._tokenize(query_normalized)
         
-        # Collect all matches first, then deduplicate keeping best score
+        # Collect all matches first, grouped by matched name to detect multi-jurisdictional
         all_matches = []
+        name_to_lists = {}  # Track which lists each name appears on
         
         for entry in self.name_index:
             target_normalized = entry['normalized']
@@ -290,23 +415,37 @@ class EnhancedSanctionsMatcher:
             
             # Add to all matches if score meets threshold
             if score is not None and score >= threshold:
+                list_type = entity.get('list_type', 'Unknown')
+                primary_name = entity.get('primary_name', original_name)
+                
+                # Track which lists this name appears on (for multi-jurisdictional detection)
+                normalized_primary = self._normalize_name(primary_name)
+                if normalized_primary not in name_to_lists:
+                    name_to_lists[normalized_primary] = set()
+                name_to_lists[normalized_primary].add(list_type)
+                
+                # Get risk tier for this list
+                risk_tier_info = self._get_risk_tier(list_type)
+                
                 all_matches.append({
                     'matched_name': original_name,
                     'score': round(score, 1),
                     'match_layer': match_layer,
                     'entity_id': id(entity),
+                    'normalized_primary': normalized_primary,
                     'entity': {
                         'source': entity.get('source', 'Unknown'),
-                        'list_type': entity.get('list_type', 'Unknown'),
+                        'list_type': list_type,
                         'type': entity.get('type', 'unknown'),
-                        'primary_name': entity.get('primary_name', original_name)
-                    }
+                        'primary_name': primary_name
+                    },
+                    'sanctioning_authority': risk_tier_info['authority'],
+                    'risk_tier': risk_tier_info['tier'],
+                    'risk_tier_name': risk_tier_info['tier_name']
                 })
         
-        # Sort all matches by score (highest first)
-        all_matches.sort(key=lambda x: x['score'], reverse=True)
-        
         # Deduplicate: keep only the highest-scoring match per entity
+        # But also calculate multi-jurisdictional risk scores
         seen_entities = set()
         matches = []
         
@@ -314,9 +453,33 @@ class EnhancedSanctionsMatcher:
             entity_id = match['entity_id']
             if entity_id not in seen_entities:
                 seen_entities.add(entity_id)
-                # Remove entity_id from output (internal use only)
-                del match['entity_id']
-                matches.append(match)
+                
+                # Get all lists this name appears on
+                normalized_primary = match['normalized_primary']
+                all_lists = list(name_to_lists.get(normalized_primary, {match['entity']['list_type']}))
+                
+                # Calculate risk score with multi-jurisdictional weighting
+                risk_info = self._calculate_risk_score(match['score'], all_lists)
+                
+                # Build the final match result
+                result = {
+                    'matched_name': match['matched_name'],
+                    'score': match['score'],
+                    'match_layer': match['match_layer'],
+                    'entity': match['entity'],
+                    'sanctioning_authority': match['sanctioning_authority'],
+                    'risk_tier': match['risk_tier'],
+                    'risk_tier_name': match['risk_tier_name'],
+                    'risk_score': risk_info['risk_score'],
+                    'risk_level': risk_info['risk_level'],
+                    'is_multi_jurisdictional': risk_info['is_multi_jurisdictional'],
+                    'all_sanctioning_authorities': risk_info.get('sanctioning_authorities', match['entity']['list_type'])
+                }
+                
+                matches.append(result)
+        
+        # Sort by risk score (highest first), then by match score
+        matches.sort(key=lambda x: (x['risk_score'], x['score']), reverse=True)
         
         return matches
 
