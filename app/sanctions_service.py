@@ -10,7 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Parser version - increment this when parser logic changes to invalidate cache
-PARSER_VERSION = 2  # v2: Fixed OFAC namespace parsing
+PARSER_VERSION = 3  # v3: Added XML structure-based format auto-detection
 
 class SanctionsService:
     def __init__(self, data_dir="data", cache_file="instance/sanctions_cache.pkl"):
@@ -23,6 +23,15 @@ class SanctionsService:
         self.all_names = []  # For fuzzy matching optimization
         self._load_or_parse_sanctions()
     
+    def _get_xml_files(self) -> List[Path]:
+        """Get all XML files in data directory with case-insensitive extension matching"""
+        xml_files = []
+        if self.data_dir.exists():
+            for file_path in self.data_dir.iterdir():
+                if file_path.is_file() and file_path.suffix.lower() == '.xml':
+                    xml_files.append(file_path)
+        return xml_files
+    
     def _get_file_hash(self, file_path: Path) -> str:
         """Get MD5 hash of file to detect changes"""
         hasher = hashlib.md5()
@@ -33,7 +42,7 @@ class SanctionsService:
     
     def _have_files_changed(self) -> bool:
         """Check if any XML files have changed since last load"""
-        xml_files = list(self.data_dir.glob('*.xml'))
+        xml_files = self._get_xml_files()
         
         if len(xml_files) != len(self.file_hashes):
             return True
@@ -79,7 +88,7 @@ class SanctionsService:
             
             # Store file hashes for change detection
             self.file_hashes = {}
-            xml_files = list(self.data_dir.glob('*.xml'))
+            xml_files = self._get_xml_files()
             for xml_file in xml_files:
                 self.file_hashes[xml_file.name] = self._get_file_hash(xml_file)
             
@@ -104,10 +113,130 @@ class SanctionsService:
             for name in entity.get('names', []):
                 self.all_names.append((name.lower(), entity, name))
     
+    def _detect_format(self, root) -> str:
+        """
+        Detect the sanctions list format based on XML structure.
+        
+        Detection Strategy:
+        - EU: Namespace URI 'http://eu.europa.ec/fpi/fsd/export', contains <sanctionEntity> elements
+        - OFAC: Namespace URI contains 'sanctionslistservice.ofac.treas.gov', root <sanctionsData>, 
+                contains <entities> structure
+        - UK: Root tag 'Designations', contains <Designation> and <Name> elements (no <Name6>)
+        - UN: Root tag 'Designations', contains <Name6> and <IndividualEntityShip> elements
+        
+        Returns: 'EU', 'OFAC', 'UK', 'UN', or 'generic'
+        """
+        # Get root tag without namespace
+        root_tag = root.tag.split('}')[-1] if '}' in root.tag else root.tag
+        
+        # Check namespace in root tag
+        namespace = ''
+        if '}' in root.tag:
+            namespace = root.tag.split('}')[0].strip('{')
+        
+        # EU detection: namespace http://eu.europa.ec/fpi/fsd/export
+        if 'eu.europa.ec/fpi/fsd/export' in namespace:
+            logger.info("Detected EU format (namespace: eu.europa.ec/fpi/fsd/export)")
+            return 'EU'
+        
+        # Check for sanctionEntity elements (EU format marker)
+        has_sanction_entity = False
+        for elem in root.iter():
+            tag_name = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+            if tag_name == 'sanctionEntity':
+                has_sanction_entity = True
+                break
+        
+        if has_sanction_entity:
+            logger.info("Detected EU format (contains sanctionEntity elements)")
+            return 'EU'
+        
+        # OFAC detection: namespace contains sanctionslistservice.ofac.treas.gov
+        if 'sanctionslistservice.ofac.treas.gov' in namespace:
+            logger.info("Detected OFAC format (namespace: sanctionslistservice.ofac.treas.gov)")
+            return 'OFAC'
+        
+        # Check for sanctionsData root tag or entities container (OFAC markers)
+        if root_tag == 'sanctionsData':
+            logger.info("Detected OFAC format (root tag: sanctionsData)")
+            return 'OFAC'
+        
+        # Check for entities container element (OFAC marker)
+        for elem in root.iter():
+            tag_name = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+            if tag_name == 'entities':
+                # Verify it has entity children (OFAC structure)
+                for child in elem:
+                    child_tag = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+                    if child_tag == 'entity':
+                        logger.info("Detected OFAC format (contains entities/entity structure)")
+                        return 'OFAC'
+                break
+        
+        # UK/UN detection: both use Designations root
+        if root_tag == 'Designations':
+            # Check for distinguishing elements by sampling multiple designations
+            # UN format marker: has Name6 AND IndividualEntityShip elements
+            # UK format marker: has Name elements with direct text content OR
+            #                   has Name6 without IndividualEntityShip
+            has_name6 = False
+            has_individual_entity_ship = False
+            has_plain_name = False  # <Name> with direct text content
+            
+            # Sample up to 10 designations for efficiency
+            designations = root.findall('.//Designation')[:10]
+            
+            for designation in designations:
+                # Check for Name6 elements (common in both UK OFSI and UN formats)
+                name6_elems = designation.findall('.//Name6')
+                if name6_elems:
+                    has_name6 = True
+                
+                # Check for IndividualEntityShip elements (UN format marker)
+                ies_elems = designation.findall('.//IndividualEntityShip')
+                if ies_elems:
+                    has_individual_entity_ship = True
+                
+                # Check for plain Name elements with direct text content
+                # This indicates older UK format where Name has text, not Name6 children
+                for name_elem in designation.findall('.//Name'):
+                    # If Name element has direct text content (not just whitespace around children)
+                    if name_elem.text and name_elem.text.strip():
+                        # Verify it's not just whitespace before Name6 element
+                        text = name_elem.text.strip()
+                        if len(text) >= 2 and any(c.isalpha() for c in text):
+                            has_plain_name = True
+                            break
+                
+                # Early exit if we've determined UN format
+                if has_name6 and has_individual_entity_ship:
+                    break
+            
+            # UN format: has Name6 AND IndividualEntityShip elements
+            # This is the primary distinguisher from UK format
+            if has_name6 and has_individual_entity_ship:
+                logger.info("Detected UN format (contains Name6 and IndividualEntityShip elements)")
+                return 'UN'
+            
+            # UK format: has plain Name text content OR has Name6 without IndividualEntityShip
+            # The UK parser handles both Name and Name6 extraction
+            if has_plain_name or (has_name6 and not has_individual_entity_ship):
+                logger.info("Detected UK format (Designations with Name elements)")
+                return 'UK'
+            
+            # Default to UK for Designations format (backward compatibility)
+            # The UK parser is flexible enough to handle various Designation formats
+            logger.info("Detected UK format (Designations root tag, defaulting)")
+            return 'UK'
+        
+        # Fallback to generic parser
+        logger.info("Could not detect specific format, using generic parser")
+        return 'generic'
+
     def _parse_all_sanctions(self) -> List[Dict[str, Any]]:
         """Parse all XML sanctions files with better error handling"""
         import xml.etree.ElementTree as ET
-        xml_files = list(self.data_dir.glob('*.xml'))
+        xml_files = self._get_xml_files()
         all_entities = []
         
         for xml_file in xml_files:
@@ -121,15 +250,17 @@ class SanctionsService:
                 if len(root) > 0:
                     print(f"   Child elements: {[child.tag for child in root[:5]]}")
                 
-                filename = xml_file.name.lower()
+                # Auto-detect format based on XML structure
+                detected_format = self._detect_format(root)
+                print(f"   Detected format: {detected_format}")
                 
-                if 'uk' in filename:
+                if detected_format == 'UK':
                     entities = self._parse_uk_format(root, str(xml_file.name))
-                elif 'eu' in filename:
+                elif detected_format == 'EU':
                     entities = self._parse_eu_format(root, str(xml_file.name))
-                elif 'un' in filename:
+                elif detected_format == 'UN':
                     entities = self._parse_un_format(root, str(xml_file.name))
-                elif 'ofac' in filename:
+                elif detected_format == 'OFAC':
                     entities = self._parse_ofac_format(root, str(xml_file.name))
                 else:
                     entities = self._parse_generic(root, str(xml_file.name))
