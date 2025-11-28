@@ -106,7 +106,13 @@ class UniversalSanctionsParser:
         # Register namespace
         ns = {'fsd': 'http://eu.europa.ec/fpi/fsd/export'}
         
-        for sanction_entity in root.findall('.//fsd:sanctionEntity', ns):
+        # Find sanctionEntity elements - handle default namespace
+        entity_elems = []
+        for elem in root.iter():
+            if elem.tag.endswith('}sanctionEntity') or elem.tag == 'sanctionEntity':
+                entity_elems.append(elem)
+        
+        for sanction_entity in entity_elems:
             entity = {
                 'source': source,
                 'list_type': 'EU',
@@ -114,25 +120,29 @@ class UniversalSanctionsParser:
             }
             
             names = []
+            entity_type = 'entity'
             
-            # Extract main name
-            name_elem = sanction_entity.find('.//fsd:nameAlias', ns)
-            if name_elem is not None and name_elem.text:
-                names.append(name_elem.text.strip())
+            # Extract names from nameAlias elements - wholeName is an ATTRIBUTE
+            for child in sanction_entity.iter():
+                if child.tag.endswith('}nameAlias') or child.tag == 'nameAlias':
+                    whole_name = child.get('wholeName')
+                    if whole_name and whole_name.strip():
+                        names.append(whole_name.strip())
             
-            # Look for other name elements
-            for elem in sanction_entity:
-                tag = elem.tag
-                if 'name' in tag.lower() and elem.text and elem.text.strip():
-                    names.append(elem.text.strip())
+            # Determine entity type from subjectType
+            for child in sanction_entity.iter():
+                if child.tag.endswith('}subjectType') or child.tag == 'subjectType':
+                    code = child.get('code', '').lower()
+                    if 'person' in code:
+                        entity_type = 'individual'
             
             if names:
-                entity['names'] = names
+                entity['names'] = list(dict.fromkeys(names))  # Remove duplicates while preserving order
                 entity['primary_name'] = names[0]
-                entity['type'] = 'entity'  # EU format typically entities
+                entity['type'] = entity_type
                 
                 # Extract ID
-                entity['id'] = self._extract_text(sanction_entity, './/fsd:logId', ns)
+                entity['id'] = sanction_entity.get('logicalId', '')
                 
                 entities.append(entity)
         
@@ -226,13 +236,27 @@ class UniversalSanctionsParser:
         }
     
     def _parse_ofac_format(self, root: ET.Element, source: str) -> List[Dict[str, Any]]:
-        """Parse OFAC SDN list format with namespace"""
+        """Parse OFAC SDN Enhanced XML format with namespace"""
         entities = []
         
-        # Register namespace
-        ns = {'ofac': 'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/XML'}
+        # OFAC Enhanced XML uses default namespace
+        ns = {'ofac': 'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/ENHANCED_XML'}
         
-        for sdn_entry in root.findall('.//ofac:sdnEntry', ns):
+        # Find entities container
+        entities_container = None
+        for elem in root.iter():
+            if elem.tag.endswith('}entities') or elem.tag == 'entities':
+                entities_container = elem
+                break
+        
+        if entities_container is None:
+            return entities
+        
+        # Find all entity elements
+        for entity_elem in entities_container.iter():
+            if not (entity_elem.tag.endswith('}entity') or entity_elem.tag == 'entity'):
+                continue
+            
             entity = {
                 'source': source,
                 'list_type': 'OFAC',
@@ -240,28 +264,31 @@ class UniversalSanctionsParser:
             }
             
             names = []
+            entity_type = 'entity'
             
-            # Extract names - OFAC uses lastName for both individuals and entities
-            last_name = self._extract_text(sdn_entry, './/ofac:lastName', ns)
-            if last_name:
-                names.append(last_name)
+            # OFAC structure: entity > names > name > translations > translation > formattedFullName
+            for trans_elem in entity_elem.iter():
+                if trans_elem.tag.endswith('}translation') or trans_elem.tag == 'translation':
+                    for child in trans_elem:
+                        if child.tag.endswith('}formattedFullName') or child.tag == 'formattedFullName':
+                            if child.text and child.text.strip():
+                                names.append(child.text.strip())
             
-            # Also check for first names for individuals
-            first_name = self._extract_text(sdn_entry, './/ofac:firstName', ns)
-            if first_name and last_name:
-                # Create full name for individuals
-                names.append(f"{first_name} {last_name}".strip())
+            # Determine entity type from generalInfo > entityType
+            for gen_elem in entity_elem.iter():
+                if gen_elem.tag.endswith('}entityType') or gen_elem.tag == 'entityType':
+                    if gen_elem.text:
+                        type_text = gen_elem.text.strip().lower()
+                        if 'individual' in type_text or 'person' in type_text:
+                            entity_type = 'individual'
             
             if names:
-                entity['names'] = names
+                entity['names'] = list(dict.fromkeys(names))  # Remove duplicates while preserving order
                 entity['primary_name'] = names[0]
-                
-                # Determine type
-                sdn_type = self._extract_text(sdn_entry, './/ofac:sdnType', ns)
-                entity['type'] = 'individual' if sdn_type and 'individual' in sdn_type.lower() else 'entity'
+                entity['type'] = entity_type
                 
                 # Extract ID
-                entity['id'] = self._extract_text(sdn_entry, './/ofac:uid', ns)
+                entity['id'] = entity_elem.get('id', '')
                 
                 entities.append(entity)
         

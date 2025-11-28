@@ -78,11 +78,12 @@ class RobustXMLParser:
         
         # EU format  
         elif 'eu' in source_name.lower():
-            ns = {'fsd': 'http://eu.europa.ec/fpi/fsd/export'}
-            for entity_elem in root.findall('.//fsd:sanctionEntity', ns):
-                entity = self._parse_eu_entity(entity_elem, source_name, ns)
-                if entity:
-                    entities.append(entity)
+            # Find sanctionEntity elements by iterating (handles default namespace)
+            for elem in root.iter():
+                if elem.tag.endswith('}sanctionEntity') or elem.tag == 'sanctionEntity':
+                    entity = self._parse_eu_entity(elem, source_name, None)
+                    if entity:
+                        entities.append(entity)
         
         # UN format
         elif 'un' in source_name.lower():
@@ -90,11 +91,19 @@ class RobustXMLParser:
         
         # OFAC format
         elif 'ofac' in source_name.lower():
-            ns = {'ofac': 'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/XML'}
-            for sdn_entry in root.findall('.//ofac:sdnEntry', ns):
-                entity = self._parse_ofac_entry(sdn_entry, source_name, ns)
-                if entity:
-                    entities.append(entity)
+            # Find entities container
+            entities_container = None
+            for elem in root.iter():
+                if elem.tag.endswith('}entities') or elem.tag == 'entities':
+                    entities_container = elem
+                    break
+            
+            if entities_container is not None:
+                for entity_elem in entities_container.iter():
+                    if entity_elem.tag.endswith('}entity') or entity_elem.tag == 'entity':
+                        entity = self._parse_ofac_entry(entity_elem, source_name, None)
+                        if entity:
+                            entities.append(entity)
         
         # Generic fallback - look for any elements with names
         else:
@@ -133,17 +142,29 @@ class RobustXMLParser:
         """Parse EU entity format"""
         try:
             names = []
-            name_elem = entity_elem.find('.//fsd:nameAlias', ns)
-            if name_elem is not None and name_elem.text:
-                names.append(name_elem.text.strip())
+            entity_type = 'entity'
+            
+            # Find nameAlias elements and extract wholeName ATTRIBUTE
+            for child in entity_elem.iter():
+                if child.tag.endswith('}nameAlias') or child.tag == 'nameAlias':
+                    whole_name = child.get('wholeName')
+                    if whole_name and whole_name.strip():
+                        names.append(whole_name.strip())
+            
+            # Determine entity type from subjectType
+            for child in entity_elem.iter():
+                if child.tag.endswith('}subjectType') or child.tag == 'subjectType':
+                    code = child.get('code', '').lower()
+                    if 'person' in code:
+                        entity_type = 'individual'
             
             if names:
                 return {
                     'source': source_name,
                     'list_type': 'EU',
-                    'names': names,
+                    'names': list(dict.fromkeys(names)),  # Remove duplicates while preserving order
                     'primary_name': names[0],
-                    'type': 'entity',
+                    'type': entity_type,
                     'parse_method': 'eu_entity'
                 }
         except Exception as e:
@@ -217,25 +238,35 @@ class RobustXMLParser:
         
         return None
     
-    def _parse_ofac_entry(self, sdn_entry, source_name: str, ns) -> Optional[Dict[str, Any]]:
-        """Parse OFAC SDN entry"""
+    def _parse_ofac_entry(self, entity_elem, source_name: str, ns) -> Optional[Dict[str, Any]]:
+        """Parse OFAC SDN Enhanced XML entry"""
         try:
             names = []
-            last_name = self._get_text(sdn_entry, './/ofac:lastName', ns)
-            if last_name:
-                names.append(last_name)
+            entity_type = 'entity'
             
-            first_name = self._get_text(sdn_entry, './/ofac:firstName', ns)
-            if first_name and last_name:
-                names.append(f"{first_name} {last_name}")
+            # OFAC structure: entity > names > name > translations > translation > formattedFullName
+            for trans_elem in entity_elem.iter():
+                if trans_elem.tag.endswith('}translation') or trans_elem.tag == 'translation':
+                    for child in trans_elem:
+                        if child.tag.endswith('}formattedFullName') or child.tag == 'formattedFullName':
+                            if child.text and child.text.strip():
+                                names.append(child.text.strip())
+            
+            # Determine entity type from generalInfo > entityType
+            for gen_elem in entity_elem.iter():
+                if gen_elem.tag.endswith('}entityType') or gen_elem.tag == 'entityType':
+                    if gen_elem.text:
+                        type_text = gen_elem.text.strip().lower()
+                        if 'individual' in type_text or 'person' in type_text:
+                            entity_type = 'individual'
             
             if names:
                 return {
                     'source': source_name,
                     'list_type': 'OFAC',
-                    'names': names,
+                    'names': list(dict.fromkeys(names)),  # Remove duplicates while preserving order
                     'primary_name': names[0],
-                    'type': 'individual' if first_name else 'entity',
+                    'type': entity_type,
                     'parse_method': 'ofac_entry'
                 }
         except Exception as e:
