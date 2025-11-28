@@ -163,39 +163,66 @@ class SanctionsService:
     def _parse_eu_format(self, root, source: str) -> List[Dict[str, Any]]:
         """Parse EU consolidated format with correct structure"""
         entities = []
+        # EU uses default namespace - must be handled properly
         ns = {'eu': 'http://eu.europa.ec/fpi/fsd/export'}
         
-        for entity_elem in root.findall('.//eu:sanctionEntity', ns):
+        # First try with namespace prefix
+        entity_elems = root.findall('.//eu:sanctionEntity', ns)
+        
+        # If no entities found with namespace, try without (for non-namespaced XML)
+        if not entity_elems:
+            entity_elems = root.findall('.//sanctionEntity')
+        
+        # If still no entities, iterate all children to find sanctionEntity tags
+        if not entity_elems:
+            for elem in root.iter():
+                if elem.tag.endswith('}sanctionEntity') or elem.tag == 'sanctionEntity':
+                    entity_elems.append(elem)
+        
+        for entity_elem in entity_elems:
             names = []
             country = None
             entity_type = 'unknown'
             
-            # Extract names from nameAlias - FIXED: look deeper
-            for name_alias in entity_elem.findall('.//eu:nameAlias', ns):
-                # Look for wholeName elements
-                for whole_name in name_alias.findall('.//eu:wholeName', ns):
-                    if whole_name.text and whole_name.text.strip():
-                        name = whole_name.text.strip()
-                        if not self._contains_illegal_content(name):
-                            names.append(name)
-                
-                # Also check for other name elements
-                for name_elem in name_alias.iter():
-                    if (name_elem != name_alias and 
-                        name_elem.text and name_elem.text.strip() and
-                        len(name_elem.text.strip()) > 3 and
-                        'name' in name_elem.tag.lower()):
-                        name = name_elem.text.strip()
-                        if not self._contains_illegal_content(name):
-                            names.append(name)
+            # Find nameAlias elements - handle both namespaced and non-namespaced
+            name_aliases = entity_elem.findall('.//eu:nameAlias', ns)
+            if not name_aliases:
+                name_aliases = entity_elem.findall('.//nameAlias')
+            if not name_aliases:
+                # Try iterating to find nameAlias tags
+                for elem in entity_elem.iter():
+                    if elem.tag.endswith('}nameAlias') or elem.tag == 'nameAlias':
+                        name_aliases.append(elem)
             
-            # Extract country
-            for country_elem in entity_elem.findall('.//eu:country', ns):
-                if country_elem.text:
-                    country = country_elem.text.strip()
+            for name_alias in name_aliases:
+                # EU format stores names in the wholeName ATTRIBUTE, not as element text
+                whole_name = name_alias.get('wholeName')
+                if whole_name and whole_name.strip():
+                    name = whole_name.strip()
+                    if not self._contains_illegal_content(name):
+                        names.append(name)
             
-            # Extract subject type
-            for subject_elem in entity_elem.findall('.//eu:subjectType', ns):
+            # Extract country from citizenship element
+            citizenship_elems = entity_elem.findall('.//eu:citizenship', ns)
+            if not citizenship_elems:
+                for elem in entity_elem.iter():
+                    if elem.tag.endswith('}citizenship') or elem.tag == 'citizenship':
+                        citizenship_elems.append(elem)
+            
+            for citizenship_elem in citizenship_elems:
+                country_desc = citizenship_elem.get('countryDescription')
+                if country_desc:
+                    country = country_desc.strip()
+                    break
+            
+            # Extract subject type from subjectType element
+            subject_elems = entity_elem.findall('.//eu:subjectType', ns)
+            if not subject_elems:
+                for elem in entity_elem.iter():
+                    if elem.tag.endswith('}subjectType') or elem.tag == 'subjectType':
+                        subject_elems.append(elem)
+            
+            for subject_elem in subject_elems:
                 code = subject_elem.get('code', '').lower()
                 if 'person' in code:
                     entity_type = 'individual'
@@ -206,7 +233,7 @@ class SanctionsService:
                 entities.append({
                     'source': source,
                     'list_type': 'EU',
-                    'names': names,
+                    'names': list(set(names)),  # Remove duplicates
                     'primary_name': names[0],
                     'country': country,
                     'type': entity_type
@@ -261,53 +288,84 @@ class SanctionsService:
         entities = []
         ns = {'ofac': 'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/ENHANCED_XML'}
         
-        # Find entities container
+        # Find entities container - try with namespace first
         entities_container = root.find('.//ofac:entities', ns)
+        
+        # If not found with namespace, try without or iterate to find
+        if entities_container is None:
+            entities_container = root.find('.//entities')
+        
+        if entities_container is None:
+            # Try to find entities tag by iterating
+            for elem in root.iter():
+                if elem.tag.endswith('}entities') or elem.tag == 'entities':
+                    entities_container = elem
+                    break
+        
         if entities_container is None:
             return entities
         
-        for entity_elem in entities_container.findall('.//ofac:entity', ns):
+        # Find all entity elements
+        entity_elems = entities_container.findall('.//ofac:entity', ns)
+        if not entity_elems:
+            entity_elems = entities_container.findall('.//entity')
+        if not entity_elems:
+            for elem in entities_container.iter():
+                if elem.tag.endswith('}entity') or elem.tag == 'entity':
+                    entity_elems.append(elem)
+        
+        for entity_elem in entity_elems:
             names = []
             country = None
             entity_type = 'unknown'
             
-            # Extract names from name elements
-            for name_elem in entity_elem.findall('.//ofac:name', ns):
-                # Look for aka elements with actual name content
-                for aka_elem in name_elem.findall('.//ofac:aka', ns):
-                    # Try various name fields
-                    for name_field in ['ofac:primaryDisplayName', 'ofac:alias', 'ofac:formattedName']:
-                        for name_val in aka_elem.findall(f'.//{name_field}', ns):
-                            if name_val.text and name_val.text.strip():
-                                name = name_val.text.strip()
-                                if not self._contains_illegal_content(name):
-                                    names.append(name)
-                    
-                    # Also check for any text content in aka
-                    if aka_elem.text and aka_elem.text.strip():
-                        name = aka_elem.text.strip()
-                        if not self._contains_illegal_content(name):
-                            names.append(name)
+            # OFAC structure: entity > names > name > translations > translation > formattedFullName
+            # Find name elements
+            name_elems = []
+            for elem in entity_elem.iter():
+                if elem.tag.endswith('}name') or elem.tag == 'name':
+                    name_elems.append(elem)
             
-            # Extract country
-            for country_elem in entity_elem.findall('.//ofac:country', ns):
-                if country_elem.text:
-                    country = country_elem.text.strip()
+            for name_elem in name_elems:
+                # Find translations > translation > formattedFullName
+                for trans_elem in name_elem.iter():
+                    if trans_elem.tag.endswith('}translation') or trans_elem.tag == 'translation':
+                        # Look for formattedFullName
+                        for child in trans_elem:
+                            if child.tag.endswith('}formattedFullName') or child.tag == 'formattedFullName':
+                                if child.text and child.text.strip():
+                                    name = child.text.strip()
+                                    if not self._contains_illegal_content(name):
+                                        names.append(name)
             
-            # Determine entity type
-            for type_elem in entity_elem.findall('.//ofac:type', ns):
-                if type_elem.text:
-                    type_text = type_elem.text.strip().lower()
-                    if 'individual' in type_text or 'person' in type_text:
-                        entity_type = 'individual'
-                    elif 'entity' in type_text or 'organization' in type_text or 'business' in type_text:
-                        entity_type = 'entity'
+            # Determine entity type from generalInfo > entityType
+            for gen_info in entity_elem.iter():
+                if gen_info.tag.endswith('}generalInfo') or gen_info.tag == 'generalInfo':
+                    for child in gen_info:
+                        if child.tag.endswith('}entityType') or child.tag == 'entityType':
+                            if child.text:
+                                type_text = child.text.strip().lower()
+                                if 'individual' in type_text or 'person' in type_text:
+                                    entity_type = 'individual'
+                                elif 'entity' in type_text or 'organization' in type_text or 'business' in type_text:
+                                    entity_type = 'entity'
+            
+            # Extract country from addresses
+            for addr_elem in entity_elem.iter():
+                if addr_elem.tag.endswith('}address') or addr_elem.tag == 'address':
+                    for child in addr_elem:
+                        if child.tag.endswith('}country') or child.tag == 'country':
+                            if child.text:
+                                country = child.text.strip()
+                                break
+                    if country:
+                        break
             
             if names:
                 entities.append({
                     'source': source,
                     'list_type': 'OFAC',
-                    'names': names,
+                    'names': list(set(names)),  # Remove duplicates
                     'primary_name': names[0],
                     'country': country,
                     'type': entity_type

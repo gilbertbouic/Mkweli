@@ -103,35 +103,57 @@ class UniversalSanctionsParser:
         self.logger.info(f"📊 Parsed {entities_parsed} entities from UK file")
     
     def _parse_ofac_format(self, root: ET.Element, source: str):
-        """Parse OFAC sanctions format"""
+        """Parse OFAC sanctions format (Enhanced XML format)"""
         entities_parsed = 0
-        # OFAC format typically has sdnEntries -> sdnEntry
-        for entry in root.findall('.//sdnEntry') + root.findall('.//entry'):
+        # OFAC Enhanced XML uses default namespace
+        ns = {'ofac': 'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/ENHANCED_XML'}
+        
+        # Find entities container
+        entities_container = None
+        for elem in root.iter():
+            if elem.tag.endswith('}entities') or elem.tag == 'entities':
+                entities_container = elem
+                break
+        
+        if entities_container is None:
+            self.logger.warning(f"No entities container found in OFAC file {source}")
+            return
+        
+        # Find all entity elements
+        for entity_elem in entities_container.iter():
+            if not (entity_elem.tag.endswith('}entity') or entity_elem.tag == 'entity'):
+                continue
+            
             try:
                 names = []
-                primary_name = ""
+                entity_type = 'entity'
                 
-                # OFAC has firstName, lastName for individuals, title for entities
-                first_name = self._extract_text(entry, './/firstName')
-                last_name = self._extract_text(entry, './/lastName')
-                title = self._extract_text(entry, './/title')
+                # OFAC structure: entity > names > name > translations > translation > formattedFullName
+                for trans_elem in entity_elem.iter():
+                    if trans_elem.tag.endswith('}translation') or trans_elem.tag == 'translation':
+                        for child in trans_elem:
+                            if child.tag.endswith('}formattedFullName') or child.tag == 'formattedFullName':
+                                if child.text and child.text.strip():
+                                    names.append(child.text.strip())
                 
-                if first_name and last_name:
-                    primary_name = f"{first_name} {last_name}".strip()
-                    names.append(primary_name)
-                elif title:
-                    primary_name = title
-                    names.append(primary_name)
+                # Determine entity type from generalInfo > entityType
+                for gen_info in entity_elem.iter():
+                    if gen_info.tag.endswith('}entityType') or gen_info.tag == 'entityType':
+                        if gen_info.text:
+                            type_text = gen_info.text.strip().lower()
+                            if 'individual' in type_text or 'person' in type_text:
+                                entity_type = 'individual'
+                            elif 'entity' in type_text:
+                                entity_type = 'entity'
                 
-                if primary_name:
+                if names:
                     entity = {
                         'source': source,
                         'list_type': 'OFAC',
-                        'names': names,
-                        'primary_name': primary_name,
-                        'type': 'individual' if first_name else 'entity',
-                        'id': entry.get('ID', ''),
-                        'address': self._extract_text(entry, './/address')
+                        'names': list(set(names)),
+                        'primary_name': names[0],
+                        'type': entity_type,
+                        'id': entity_elem.get('id', '')
                     }
                     
                     self.parsed_entities.append(entity)
@@ -144,29 +166,46 @@ class UniversalSanctionsParser:
         self.logger.info(f"📊 Parsed {entities_parsed} entities from OFAC file")
     
     def _parse_eu_format(self, root: ET.Element, source: str):
-        """Parse EU sanctions format"""
+        """Parse EU sanctions format (FSD export format)"""
         entities_parsed = 0
-        # EU format varies, try common patterns
-        for party in root.findall('.//party') + root.findall('.//Entity') + root.findall('.//entity'):
+        # EU uses default namespace
+        ns = {'eu': 'http://eu.europa.ec/fpi/fsd/export'}
+        
+        # Find sanctionEntity elements - handle namespaced elements
+        entity_elems = []
+        for elem in root.iter():
+            if elem.tag.endswith('}sanctionEntity') or elem.tag == 'sanctionEntity':
+                entity_elems.append(elem)
+        
+        for entity_elem in entity_elems:
             try:
                 names = []
-                primary_name = ""
+                entity_type = 'entity'
                 
-                # Try different name elements
-                name_text = self._extract_text(party, './/name') or self._extract_text(party, './/title')
-                if name_text:
-                    primary_name = name_text
-                    names.append(primary_name)
+                # Find nameAlias elements and extract wholeName attribute
+                for child in entity_elem.iter():
+                    if child.tag.endswith('}nameAlias') or child.tag == 'nameAlias':
+                        whole_name = child.get('wholeName')
+                        if whole_name and whole_name.strip():
+                            names.append(whole_name.strip())
                 
-                if primary_name:
+                # Determine entity type from subjectType
+                for child in entity_elem.iter():
+                    if child.tag.endswith('}subjectType') or child.tag == 'subjectType':
+                        code = child.get('code', '').lower()
+                        if 'person' in code:
+                            entity_type = 'individual'
+                        elif 'entity' in code or 'organisation' in code:
+                            entity_type = 'entity'
+                
+                if names:
                     entity = {
                         'source': source,
                         'list_type': 'EU',
-                        'names': names,
-                        'primary_name': primary_name,
-                        'type': 'entity',
-                        'id': party.get('id', ''),
-                        'regulation': self._extract_text(party, './/regulation')
+                        'names': list(set(names)),
+                        'primary_name': names[0],
+                        'type': entity_type,
+                        'id': entity_elem.get('logicalId', '')
                     }
                     
                     self.parsed_entities.append(entity)
