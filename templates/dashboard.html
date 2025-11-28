@@ -150,9 +150,36 @@ document.getElementById('screenButton').addEventListener('click', function() {
             if (data.matches && data.matches.length > 0) {
                 html += '<div class="matches-list"><h4>Potential Matches:</h4><ul>';
                 data.matches.forEach(match => {
-                    html += `<li>
-                        <strong>${match.matched_name}</strong> 
-                        <span class="score">(Score: ${match.score.toFixed(1)})</span><br>
+                    // Determine risk level class for styling
+                    let riskClass = 'risk-medium';
+                    let riskLevel = match.risk_level || 'Medium';
+                    if (riskLevel === 'Critical' || riskLevel === 'Very High') {
+                        riskClass = 'risk-critical';
+                    } else if (riskLevel === 'High') {
+                        riskClass = 'risk-high';
+                    } else if (riskLevel === 'Low') {
+                        riskClass = 'risk-low';
+                    }
+                    
+                    // Multi-jurisdictional indicator
+                    let multiJurisIndicator = match.is_multi_jurisdictional ? 
+                        '<span class="multi-juris-badge">⚠️ Multi-Jurisdictional</span>' : '';
+                    
+                    html += `<li class="${riskClass}">
+                        <div class="match-header">
+                            <strong>${match.matched_name}</strong>
+                            <span class="risk-badge ${riskClass}">${riskLevel}</span>
+                        </div>
+                        <div class="match-scores">
+                            <span class="score">Match Score: ${match.score.toFixed(1)}%</span>
+                            <span class="risk-score">Risk Score: ${(match.risk_score || match.score).toFixed(1)}</span>
+                        </div>
+                        <div class="match-details">
+                            <p><strong>Sanctioning Authority:</strong> ${match.sanctioning_authority || match.entity.list_type}</p>
+                            <p><strong>Risk Tier:</strong> ${match.risk_tier_name || 'Unknown'}</p>
+                            ${match.all_sanctioning_authorities ? `<p><strong>All Authorities:</strong> ${match.all_sanctioning_authorities}</p>` : ''}
+                            ${multiJurisIndicator}
+                        </div>
                         <small>Source: ${match.entity.source} | Type: ${match.entity.type || 'unknown'}</small>
                     </li>`;
                 });
@@ -385,6 +412,97 @@ document.getElementById('reloadSanctionsBtn').addEventListener('click', function
     font-size: 0.85em;
     color: #666;
     margin: 5px 0;
+}
+
+/* Risk tier styling */
+.match-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.risk-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.risk-critical {
+    border-left-color: #8b0000 !important;
+}
+
+.risk-critical .risk-badge {
+    background: #8b0000;
+    color: white;
+}
+
+.risk-high {
+    border-left-color: #e74c3c !important;
+}
+
+.risk-high .risk-badge {
+    background: #e74c3c;
+    color: white;
+}
+
+.risk-medium {
+    border-left-color: #f39c12 !important;
+}
+
+.risk-medium .risk-badge {
+    background: #f39c12;
+    color: white;
+}
+
+.risk-low {
+    border-left-color: #27ae60 !important;
+}
+
+.risk-low .risk-badge {
+    background: #27ae60;
+    color: white;
+}
+
+.match-scores {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 10px;
+}
+
+.match-scores .score {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.match-scores .risk-score {
+    color: #8b0000;
+    font-weight: bold;
+}
+
+.match-details {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+.match-details p {
+    margin: 5px 0;
+    font-size: 0.9em;
+}
+
+.multi-juris-badge {
+    display: inline-block;
+    background: #fff3cd;
+    color: #856404;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: bold;
+    margin-top: 8px;
 }
 
 @media (max-width: 768px) {

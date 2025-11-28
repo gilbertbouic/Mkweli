@@ -218,12 +218,45 @@ def api_export_report(report_id):
                 for match in matches:
                     matched_name = escape(match.get('matched_name', 'N/A'))
                     score = match.get('score', 0)
+                    risk_score = match.get('risk_score', score)
+                    risk_level = escape(match.get('risk_level', 'Unknown'))
+                    risk_tier_name = escape(match.get('risk_tier_name', 'Unknown'))
+                    sanctioning_authority = escape(match.get('sanctioning_authority', 'N/A'))
+                    all_authorities = escape(match.get('all_sanctioning_authorities', ''))
+                    is_multi_juris = match.get('is_multi_jurisdictional', False)
                     entity = match.get('entity', {})
                     source = escape(entity.get('source', 'N/A'))
                     entity_type = escape(entity.get('type', 'unknown'))
+                    list_type = escape(entity.get('list_type', 'Unknown'))
+                    
+                    # Determine risk class
+                    risk_class = 'risk-medium'
+                    if risk_level in ['Critical', 'Very High']:
+                        risk_class = 'risk-critical'
+                    elif risk_level == 'High':
+                        risk_class = 'risk-high'
+                    elif risk_level == 'Low':
+                        risk_class = 'risk-low'
+                    
+                    multi_juris_indicator = '<span class="multi-juris">⚠️ Multi-Jurisdictional Match</span>' if is_multi_juris else ''
+                    
                     match_details_html += f'''
-                        <li>
-                            <strong>{matched_name}</strong> (Score: {score}%)<br>
+                        <li class="{risk_class}">
+                            <div class="match-header">
+                                <strong>{matched_name}</strong>
+                                <span class="risk-badge {risk_class}">{risk_level}</span>
+                            </div>
+                            <div class="match-scores">
+                                <span>Match Score: {score}%</span>
+                                <span class="risk-score-value">Risk Score: {risk_score}</span>
+                            </div>
+                            <div class="match-authority">
+                                <p><strong>Sanctioning Authority:</strong> {sanctioning_authority}</p>
+                                <p><strong>Risk Tier:</strong> {risk_tier_name}</p>
+                                <p><strong>List Type:</strong> {list_type}</p>
+                                {f'<p><strong>All Authorities:</strong> {all_authorities}</p>' if all_authorities else ''}
+                                {multi_juris_indicator}
+                            </div>
                             <small>Source: {source} | Type: {entity_type}</small>
                         </li>
                     '''
@@ -292,10 +325,81 @@ def api_export_report(report_id):
             }}
             .matches-list li {{
                 margin: 15px 0;
-                padding: 10px;
+                padding: 15px;
                 background: white;
                 border-left: 4px solid #dc3545;
                 border-radius: 4px;
+            }}
+            .matches-list li.risk-critical {{
+                border-left-color: #8b0000;
+            }}
+            .matches-list li.risk-high {{
+                border-left-color: #e74c3c;
+            }}
+            .matches-list li.risk-medium {{
+                border-left-color: #f39c12;
+            }}
+            .matches-list li.risk-low {{
+                border-left-color: #27ae60;
+            }}
+            .match-header {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            }}
+            .risk-badge {{
+                padding: 3px 10px;
+                border-radius: 12px;
+                font-size: 0.75em;
+                font-weight: bold;
+                text-transform: uppercase;
+            }}
+            .risk-badge.risk-critical {{
+                background: #8b0000;
+                color: white;
+            }}
+            .risk-badge.risk-high {{
+                background: #e74c3c;
+                color: white;
+            }}
+            .risk-badge.risk-medium {{
+                background: #f39c12;
+                color: white;
+            }}
+            .risk-badge.risk-low {{
+                background: #27ae60;
+                color: white;
+            }}
+            .match-scores {{
+                display: flex;
+                gap: 20px;
+                margin-bottom: 10px;
+                font-size: 0.9em;
+            }}
+            .risk-score-value {{
+                color: #8b0000;
+                font-weight: bold;
+            }}
+            .match-authority {{
+                background: #f8f9fa;
+                padding: 10px;
+                border-radius: 4px;
+                margin: 10px 0;
+            }}
+            .match-authority p {{
+                margin: 5px 0;
+                font-size: 0.9em;
+            }}
+            .multi-juris {{
+                display: inline-block;
+                background: #fff3cd;
+                color: #856404;
+                padding: 3px 8px;
+                border-radius: 4px;
+                font-size: 0.85em;
+                font-weight: bold;
+                margin-top: 8px;
             }}
             .footer {{
                 margin-top: 40px;
