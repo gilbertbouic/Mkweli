@@ -1,128 +1,24 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Help & Documentation</h1>
-    </div>
-
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Welcome to MkweliAML</h5>
-        </div>
-        <div class="card-body">
-            <p>MkweliAML is an open-source sanctions screening tool designed for KYC/AML compliance. 
-            It uses manually downloaded sanctions data (UN, OFAC, UK, EU) and operates 100% offline after initial setup.</p>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-md-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header">📊 Dashboard</div>
-                <div class="card-body">
-                    <ul class="list-unstyled">
-                        <li>• View total sanctions entities loaded</li>
-                        <li>• Quick screen clients against all lists</li>
-                        <li>• See today's and monthly screening stats</li>
-                        <li>• Reload sanctions data after updates</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header">📋 Sanctions Lists</div>
-                <div class="card-body">
-                    <ul class="list-unstyled">
-                        <li>• View currently loaded lists and counts</li>
-                        <li>• Download links for all 4 sources</li>
-                        <li>• Reload lists after placing new XML files</li>
-                        <li>• Update every 14 days for compliance</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header">📝 Reports</div>
-                <div class="card-body">
-                    <ul class="list-unstyled">
-                        <li>• View all screening history</li>
-                        <li>• Export reports as printable PDF</li>
-                        <li>• SHA256 hash for report integrity</li>
-                        <li>• Clear reports by day/month if needed</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header">⚙️ Settings</div>
-                <div class="card-body">
-                    <ul class="list-unstyled">
-                        <li>• Change admin password</li>
-                        <li>• Configure organization details</li>
-                        <li>• Customize report headers</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="card mb-4">
-        <div class="card-header bg-warning">
-            <h5 class="mb-0">🔄 Updating Sanctions Lists (Every 14 Days)</h5>
-        </div>
-        <div class="card-body">
-            <ol>
-                <li><strong>Download</strong> fresh XML files from official sources (see Sanctions Lists page)</li>
-                <li><strong>Rename</strong> files exactly as specified:
-                    <ul>
-                        <li><code>un_consolidated.xml</code></li>
-                        <li><code>uk_consolidated.xml</code></li>
-                        <li><code>ofac_consolidated.xml</code></li>
-                        <li><code>eu_consolidated.xml</code></li>
-                    </ul>
-                </li>
-                <li><strong>Replace</strong> old files in <code>data/</code> folder</li>
-                <li><strong>Click</strong> "Reload Sanctions" on Dashboard or Sanctions Lists page</li>
-            </ol>
-            <p class="mb-0 text-muted">The system automatically detects changed files and rebuilds the database.</p>
-        </div>
-    </div>
-
-    <div class="card mb-4">
-        <div class="card-header bg-info text-white">
-            <h5 class="mb-0">🔍 How Matching Works</h5>
-        </div>
-        <div class="card-body">
-            <p>MkweliAML uses a 4-layer matching system:</p>
-            <ol>
-                <li><strong>Exact Match (100%)</strong> - Direct name comparison</li>
-                <li><strong>Token Match (85-99%)</strong> - Word overlap comparison</li>
-                <li><strong>Phonetic Match (75-84%)</strong> - Sound-alike and abbreviations (JSC, LLC, Ltd)</li>
-                <li><strong>Fuzzy Match (70-74%)</strong> - Partial string matching</li>
-            </ol>
-            <p class="mb-0">Default threshold: 70%. Names scoring above this appear as potential matches.</p>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-header bg-secondary text-white">
-            <h5 class="mb-0">📚 Additional Resources</h5>
-        </div>
-        <div class="card-body">
-            <ul>
-                <li><a href="https://github.com/gilbertbouic/Mkweli" target="_blank">GitHub Repository</a> - Source code and issues</li>
-                <li>README.md - Quick start guide</li>
-                <li>DEPLOYMENT.md - Production deployment guide</li>
-                <li>UPDATE.md - Detailed update procedures</li>
-            </ul>
-        </div>
-    </div>
+<h1>Help</h1>
+<p>Use home to check names.</p>
+<p>Sanctions-lists: Refresh/upload lists.</p>
+<p>Clients: Add with wizard.</p>
+<p>Reports: View/PDF.</p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Help & Documentation</h1>
 </div>
+
+<p>Welcome to MkweliAML Help. This open-source tool for low-budget users relies on free official sanctions sources (UN, OFAC, UK, EU, Canada). Data is auto-fetched on startup and stored locally in the database—no cloud dependency, reducing manipulation risks. Manual uploads are available as fallback.</p>
+
+<ul>
+    <li><strong>Dashboard</strong>: Overview of clients, flagged cases, and activity. Lists show update dates from local DB.</li>
+    <li><strong>Client Management</strong>: Add clients, check against sanctions (fuzzy match >80%), delete. Risk scores update automatically.</li>
+    <li><strong>Sanctions Lists</strong>: Auto-updates from free sources. Click "Refresh Lists" for manual trigger. View counts and dates. If format changes, errors are logged in logs/app.log—use manual import.</li>
+    <li><strong>Reports</strong>: Generate PDF/HTML with client details, matches, lists used, and SHA-256 hash for integrity.</li>
+    <li><strong>Settings</strong>: Customize organization name for reports.</li>
+    <li><strong>Offline Use</strong>: Assumes internet for initial fetches; retains local data thereafter. Disable auto-fetch in app.py for fully offline.</li>
+    <li><strong>Troubleshooting</strong>: Check logs/app.log for errors. Duplicates are prevented via checks; DB remains lean.</li>
+</ul>
 {% endblock %}
