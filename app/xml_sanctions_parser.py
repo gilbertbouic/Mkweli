@@ -137,7 +137,7 @@ class UniversalSanctionsParser:
                         entity_type = 'individual'
             
             if names:
-                entity['names'] = list(set(names))
+                entity['names'] = list(dict.fromkeys(names))  # Remove duplicates while preserving order
                 entity['primary_name'] = names[0]
                 entity['type'] = entity_type
                 
@@ -283,7 +283,7 @@ class UniversalSanctionsParser:
                             entity_type = 'individual'
             
             if names:
-                entity['names'] = list(set(names))
+                entity['names'] = list(dict.fromkeys(names))  # Remove duplicates while preserving order
                 entity['primary_name'] = names[0]
                 entity['type'] = entity_type
                 

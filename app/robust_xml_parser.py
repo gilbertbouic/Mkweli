@@ -162,7 +162,7 @@ class RobustXMLParser:
                 return {
                     'source': source_name,
                     'list_type': 'EU',
-                    'names': list(set(names)),
+                    'names': list(dict.fromkeys(names)),  # Remove duplicates while preserving order
                     'primary_name': names[0],
                     'type': entity_type,
                     'parse_method': 'eu_entity'
@@ -264,7 +264,7 @@ class RobustXMLParser:
                 return {
                     'source': source_name,
                     'list_type': 'OFAC',
-                    'names': list(set(names)),
+                    'names': list(dict.fromkeys(names)),  # Remove duplicates while preserving order
                     'primary_name': names[0],
                     'type': entity_type,
                     'parse_method': 'ofac_entry'

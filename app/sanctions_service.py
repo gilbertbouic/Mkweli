@@ -233,7 +233,7 @@ class SanctionsService:
                 entities.append({
                     'source': source,
                     'list_type': 'EU',
-                    'names': list(set(names)),  # Remove duplicates
+                    'names': list(dict.fromkeys(names)),  # Remove duplicates while preserving order
                     'primary_name': names[0],
                     'country': country,
                     'type': entity_type
@@ -365,7 +365,7 @@ class SanctionsService:
                 entities.append({
                     'source': source,
                     'list_type': 'OFAC',
-                    'names': list(set(names)),  # Remove duplicates
+                    'names': list(dict.fromkeys(names)),  # Remove duplicates while preserving order
                     'primary_name': names[0],
                     'country': country,
                     'type': entity_type

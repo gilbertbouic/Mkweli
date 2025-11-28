@@ -150,7 +150,7 @@ class UniversalSanctionsParser:
                     entity = {
                         'source': source,
                         'list_type': 'OFAC',
-                        'names': list(set(names)),
+                        'names': list(dict.fromkeys(names)),  # Remove duplicates while preserving order
                         'primary_name': names[0],
                         'type': entity_type,
                         'id': entity_elem.get('id', '')
@@ -202,7 +202,7 @@ class UniversalSanctionsParser:
                     entity = {
                         'source': source,
                         'list_type': 'EU',
-                        'names': list(set(names)),
+                        'names': list(dict.fromkeys(names)),  # Remove duplicates while preserving order
                         'primary_name': names[0],
                         'type': entity_type,
                         'id': entity_elem.get('logicalId', '')
