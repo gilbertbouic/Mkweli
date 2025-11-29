@@ -1,0 +1,77 @@
+# Git
+.git
+.gitattributes
+.github
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env.local
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Database files (use volumes instead)
+*.db
+*.sqlite
+*.sqlite3
+instance/
+
+# Cache files
+.cache/
+*.pkl
+.pytest_cache/
+
+# Logs
+*.log
+logs/
+
+# Uploads (use volumes instead)
+uploads/
+temp/
+
+# Secrets
+secrets.json
+config.local.py
+.env
+
+# Testing
+tests/
+test_*.py
+pytest.ini
+.coverage
+htmlcov/
+
+# Documentation (not needed in container)
+*.md
+!README.md
+docs/
+
+# Backup files
+*.backup
+*.bak
+
+# Large data files are mounted as volumes
+# data/
+
+# Misc
+*.tar.gz
+*.zip

@@ -1,0 +1,50 @@
+# Docker Compose for Mkweli AML Screening System
+# Production-ready deployment configuration
+
+services:
+  mkweli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mkweli-aml
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-}
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - PORT=8000
+      - WORKERS=${WORKERS:-4}
+    volumes:
+      # Persistent database storage
+      - mkweli-db:/app/instance
+      # Persistent sanctions data (place XML files here)
+      - ./data:/app/data:ro
+      # Uploads directory
+      - mkweli-uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  mkweli-db:
+    driver: local
+  mkweli-uploads:
+    driver: local
