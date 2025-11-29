@@ -1,0 +1,62 @@
+# GitHub Pages Jekyll Configuration
+# Site: Mkweli - Free & Open-Source AML Compliance Tool
+
+# Site Settings
+title: "Mkweli - Free & Open-Source AML Compliance Tool"
+description: "Professional sanctions screening for NGOs and small financial institutions. Free, open-source, and easy to deploy."
+url: "https://mkweli.tech"
+baseurl: ""
+
+# Custom Domain
+# This is handled by the CNAME file, but documented here for reference
+# domain: mkweli.tech
+
+# Theme Configuration
+# Using no theme - custom HTML/CSS in index.html
+# theme: null
+remote_theme: null
+
+# Exclude unnecessary files from Jekyll build
+exclude:
+  - README.md
+  - CNAME
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+
+# Include specific files
+include:
+  - index.html
+
+# Disable Jekyll processing for our static HTML
+# (We're using pure HTML/CSS, no Jekyll templating needed)
+
+# Build Settings
+markdown: kramdown
+highlighter: rouge
+
+# Plugins (minimal - we're using static HTML)
+plugins: []
+
+# Collections (none needed for static site)
+collections: {}
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: null
+
+# SEO and Social
+author: "Gilbert Bouic"
+twitter:
+  username: null
+social:
+  name: "Mkweli AML"
+  links:
+    - "https://github.com/gilbertbouic/Mkweli"
+
+# Google Analytics (add your tracking ID if needed)
+# google_analytics: UA-XXXXXXXXX-X
