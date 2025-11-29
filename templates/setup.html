@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+
+{% block title %}Institution Setup - Mkweli AML{% endblock %}
+
+{% block content %}
+<div class="setup-header">
+    <h1><i class="fas fa-building"></i> Institution Setup</h1>
+    <p>Configure your institution details for report footers and compliance documentation</p>
+</div>
+
+<div class="setup-container">
+    <form method="POST" action="{{ url_for('setup') }}" class="setup-form" novalidate>
+        <!-- Institution Name -->
+        <div class="form-section">
+            <h3><i class="fas fa-id-card"></i> Institution Information</h3>
+            <div class="form-group">
+                <label for="institution_name">Institution Name <span class="required">*</span></label>
+                <input type="text" 
+                       id="institution_name" 
+                       name="institution_name" 
+                       class="form-control"
+                       value="{{ settings.institution_name if settings else '' }}"
+                       placeholder="Enter your institution or company name"
+                       maxlength="255"
+                       required>
+                <small class="form-hint">This name will appear in report headers and footers</small>
+            </div>
+        </div>
+
+        <!-- Address Section -->
+        <div class="form-section">
+            <h3><i class="fas fa-map-marker-alt"></i> Address Details</h3>
+            <div class="form-group">
+                <label for="address_street">Street Address</label>
+                <input type="text" 
+                       id="address_street" 
+                       name="address_street" 
+                       class="form-control"
+                       value="{{ settings.address_street if settings else '' }}"
+                       placeholder="123 Business Street, Suite 100"
+                       maxlength="255">
+            </div>
+            <div class="form-row">
+                <div class="form-group half">
+                    <label for="address_city">City</label>
+                    <input type="text" 
+                           id="address_city" 
+                           name="address_city" 
+                           class="form-control"
+                           value="{{ settings.address_city if settings else '' }}"
+                           placeholder="City"
+                           maxlength="100">
+                </div>
+                <div class="form-group half">
+                    <label for="address_state">State/Province</label>
+                    <input type="text" 
+                           id="address_state" 
+                           name="address_state" 
+                           class="form-control"
+                           value="{{ settings.address_state if settings else '' }}"
+                           placeholder="State or Province"
+                           maxlength="100">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group half">
+                    <label for="address_country">Country</label>
+                    <input type="text" 
+                           id="address_country" 
+                           name="address_country" 
+                           class="form-control"
+                           value="{{ settings.address_country if settings else '' }}"
+                           placeholder="Country"
+                           maxlength="100">
+                </div>
+                <div class="form-group half">
+                    <label for="address_postal">Postal Code</label>
+                    <input type="text" 
+                           id="address_postal" 
+                           name="address_postal" 
+                           class="form-control"
+                           value="{{ settings.address_postal if settings else '' }}"
+                           placeholder="Postal/ZIP Code"
+                           maxlength="20">
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Information -->
+        <div class="form-section">
+            <h3><i class="fas fa-phone"></i> Contact Information</h3>
+            <div class="form-row">
+                <div class="form-group half">
+                    <label for="phone_primary">Primary Phone</label>
+                    <input type="tel" 
+                           id="phone_primary" 
+                           name="phone_primary" 
+                           class="form-control"
+                           value="{{ settings.phone_primary if settings else '' }}"
+                           placeholder="+1 (555) 123-4567"
+                           maxlength="30"
+                           pattern="^\+?[\d\s\-\(\)]{7,30}$">
+                    <small class="form-hint">Use international format if applicable</small>
+                </div>
+                <div class="form-group half">
+                    <label for="phone_secondary">Secondary Phone</label>
+                    <input type="tel" 
+                           id="phone_secondary" 
+                           name="phone_secondary" 
+                           class="form-control"
+                           value="{{ settings.phone_secondary if settings else '' }}"
+                           placeholder="+1 (555) 987-6543"
+                           maxlength="30"
+                           pattern="^\+?[\d\s\-\(\)]{7,30}$">
+                </div>
+            </div>
+        </div>
+
+        <!-- Registration Details -->
+        <div class="form-section">
+            <h3><i class="fas fa-file-contract"></i> Registration & Tax Information</h3>
+            <div class="form-row">
+                <div class="form-group half">
+                    <label for="tax_registration">Tax Registration Number (VAT/Tax ID)</label>
+                    <input type="text" 
+                           id="tax_registration" 
+                           name="tax_registration" 
+                           class="form-control"
+                           value="{{ settings.tax_registration if settings else '' }}"
+                           placeholder="TAX-123456789"
+                           maxlength="50">
+                    <small class="form-hint">VAT number, Tax ID, or equivalent</small>
+                </div>
+                <div class="form-group half">
+                    <label for="registration_number">Registration/License Number</label>
+                    <input type="text" 
+                           id="registration_number" 
+                           name="registration_number" 
+                           class="form-control"
+                           value="{{ settings.registration_number if settings else '' }}"
+                           placeholder="REG-ABC123"
+                           maxlength="50">
+                    <small class="form-hint">Business license or registration number</small>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="website">Official Website</label>
+                <input type="url" 
+                       id="website" 
+                       name="website" 
+                       class="form-control"
+                       value="{{ settings.website if settings else '' }}"
+                       placeholder="https://www.yourcompany.com"
+                       maxlength="255">
+            </div>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="form-section preview-section">
+            <h3><i class="fas fa-eye"></i> Report Footer Preview</h3>
+            <div class="footer-preview" id="footerPreview">
+                <div class="preview-content">
+                    <strong id="previewName">{{ settings.institution_name if settings else 'Your Institution Name' }}</strong><br>
+                    <span id="previewAddress">{{ settings.get_full_address() if settings and settings.get_full_address() else 'Address will appear here' }}</span><br>
+                    <span id="previewPhone">Phone: {{ settings.get_phone_display() if settings and settings.get_phone_display() else '+X XXX-XXX-XXXX' }}</span><br>
+                    <span id="previewTax">Tax ID: {{ settings.tax_registration if settings else 'Your Tax ID' }}</span>
+                    <hr style="margin: 10px 0; border-style: dashed;">
+                    <small id="previewDate">Report Generated: [Current Date/Time]</small><br>
+                    <small style="font-family: monospace;">SHA256: [checksum will appear here]</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="fas fa-save"></i> Save Institution Settings
+            </button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+<style>
+.setup-header {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--primary-green);
+}
+
+.setup-header h1 {
+    color: var(--dark-green);
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.setup-header p {
+    color: #666;
+    font-size: 1.1em;
+}
+
+.setup-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.setup-form {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.form-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+}
+
+.form-section h3 {
+    color: var(--dark-green);
+    font-size: 1.2em;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-section h3 i {
+    color: var(--primary-green);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+}
+
+.required {
+    color: #e74c3c;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.form-control:focus {
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 3px rgba(46, 139, 87, 0.15);
+    outline: none;
+}
+
+.form-control:invalid:not(:placeholder-shown) {
+    border-color: #e74c3c;
+}
+
+.form-hint {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.85em;
+    color: #666;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-group.half {
+    margin-bottom: 0;
+}
+
+.preview-section {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+.footer-preview {
+    background: white;
+    padding: 20px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    font-size: 0.9em;
+    line-height: 1.6;
+}
+
+.preview-content {
+    text-align: center;
+    color: #333;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 2px solid #eee;
+}
+
+.btn {
+    padding: 12px 25px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 16px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-green), var(--dark-green));
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(46, 139, 87, 0.3);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+}
+
+.btn-lg {
+    padding: 15px 30px;
+    font-size: 18px;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+    
+    .form-group.half {
+        margin-bottom: 20px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .setup-form {
+        padding: 20px;
+    }
+}
+</style>
+
+<script>
+// Live preview update
+document.addEventListener('DOMContentLoaded', function() {
+    // Set current date in preview
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', {month: '2-digit', day: '2-digit', year: 'numeric'}) + ' ' + 
+                    now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', second: '2-digit'}) + ' UTC';
+    document.getElementById('previewDate').textContent = 'Report Generated: ' + dateStr;
+    
+    const inputs = {
+        institution_name: document.getElementById('institution_name'),
+        address_street: document.getElementById('address_street'),
+        address_city: document.getElementById('address_city'),
+        address_state: document.getElementById('address_state'),
+        address_country: document.getElementById('address_country'),
+        address_postal: document.getElementById('address_postal'),
+        phone_primary: document.getElementById('phone_primary'),
+        phone_secondary: document.getElementById('phone_secondary'),
+        tax_registration: document.getElementById('tax_registration')
+    };
+
+    function updatePreview() {
+        // Update name
+        const name = inputs.institution_name.value || 'Your Institution Name';
+        document.getElementById('previewName').textContent = name;
+        
+        // Update address
+        let addressParts = [];
+        if (inputs.address_street.value) addressParts.push(inputs.address_street.value);
+        let cityState = [];
+        if (inputs.address_city.value) cityState.push(inputs.address_city.value);
+        if (inputs.address_state.value) cityState.push(inputs.address_state.value);
+        if (cityState.length) addressParts.push(cityState.join(', '));
+        if (inputs.address_postal.value) addressParts.push(inputs.address_postal.value);
+        if (inputs.address_country.value) addressParts.push(inputs.address_country.value);
+        document.getElementById('previewAddress').textContent = addressParts.length ? addressParts.join(', ') : 'Address will appear here';
+        
+        // Update phone
+        let phones = [];
+        if (inputs.phone_primary.value) phones.push(inputs.phone_primary.value);
+        if (inputs.phone_secondary.value) phones.push(inputs.phone_secondary.value);
+        document.getElementById('previewPhone').textContent = 'Phone: ' + (phones.length ? phones.join(' / ') : '+X XXX-XXX-XXXX');
+        
+        // Update tax ID
+        document.getElementById('previewTax').textContent = 'Tax ID: ' + (inputs.tax_registration.value || 'Your Tax ID');
+    }
+
+    // Add event listeners to all inputs
+    Object.values(inputs).forEach(input => {
+        if (input) {
+            input.addEventListener('input', updatePreview);
+        }
+    });
+});
+</script>
+{% endblock %}
