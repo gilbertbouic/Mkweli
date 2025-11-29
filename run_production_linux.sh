@@ -69,8 +69,8 @@ if [ ! -f ".env" ]; then
     if [ -f ".env.example" ]; then
         echo -e "${YELLOW}Warning: .env file not found. Creating from .env.example${NC}"
         cp .env.example .env
-        # Generate a random SECRET_KEY
-        NEW_SECRET=$(python3 -c "import secrets; print(secrets.token_hex(32))")
+        # Generate a random SECRET_KEY using detected Python command
+        NEW_SECRET=$($PYTHON_CMD -c "import secrets; print(secrets.token_hex(32))")
         sed -i "s/your-secure-secret-key-here-change-me/$NEW_SECRET/g" .env
         echo -e "${GREEN}✓ Generated new SECRET_KEY${NC}"
     else

@@ -10,7 +10,7 @@ from flask import Flask, render_template, redirect, url_for, session, flash, req
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from functools import wraps
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from markupsafe import escape
 
 # Initialize Flask
@@ -776,7 +776,7 @@ def health_check():
         'status': 'healthy' if db_status == 'healthy' else 'degraded',
         'database': db_status,
         'sanctions_data': sanctions_status,
-        'timestamp': datetime.utcnow().isoformat()
+        'timestamp': datetime.now(timezone.utc).isoformat()
     }
     
     status_code = 200 if db_status == 'healthy' else 503
@@ -921,7 +921,7 @@ def api_institution_settings():
 @login_required
 def change_password():
     """Change admin password"""
-    from werkzeug.security import generate_password_hash, check_password_hash
+    from werkzeug.security import generate_password_hash
     
     if request.method == 'POST':
         current_password = request.form.get('current_password', '').strip()
@@ -939,7 +939,7 @@ def change_password():
             flash('User not found.', 'error')
             return redirect(url_for('login'))
         
-        # Verify current password
+        # Verify current password (uses User.check_password method)
         if not user.check_password(current_password):
             flash('Current password is incorrect.', 'error')
             return render_template('change_password.html')
