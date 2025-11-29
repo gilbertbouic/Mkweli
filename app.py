@@ -753,6 +753,36 @@ def api_sanctions_last_loaded():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Health check endpoint for Docker/monitoring
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Docker and monitoring systems"""
+    try:
+        # Check database connectivity
+        db.session.execute(db.text('SELECT 1'))
+        db_status = 'healthy'
+    except Exception as e:
+        db_status = f'unhealthy: {str(e)}'
+    
+    # Check sanctions service
+    try:
+        from app.sanctions_service import get_sanctions_stats
+        stats = get_sanctions_stats()
+        sanctions_status = 'loaded' if stats.get('total_entities', 0) > 0 else 'no data'
+    except Exception:
+        sanctions_status = 'not loaded'
+    
+    health_data = {
+        'status': 'healthy' if db_status == 'healthy' else 'degraded',
+        'database': db_status,
+        'sanctions_data': sanctions_status,
+        'timestamp': datetime.utcnow().isoformat()
+    }
+    
+    status_code = 200 if db_status == 'healthy' else 503
+    return jsonify(health_data), status_code
+
+
 # Error handlers
 @app.errorhandler(404)
 def not_found(e):
@@ -885,6 +915,57 @@ def api_institution_settings():
     if inst_settings:
         return jsonify(inst_settings.to_dict())
     return jsonify({})
+
+
+@app.route('/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    """Change admin password"""
+    from werkzeug.security import generate_password_hash, check_password_hash
+    
+    if request.method == 'POST':
+        current_password = request.form.get('current_password', '').strip()
+        new_password = request.form.get('new_password', '').strip()
+        confirm_password = request.form.get('confirm_password', '').strip()
+        
+        # Validate inputs
+        if not current_password or not new_password or not confirm_password:
+            flash('All fields are required.', 'error')
+            return render_template('change_password.html')
+        
+        # Get current user
+        user = User.query.get(session['user_id'])
+        if not user:
+            flash('User not found.', 'error')
+            return redirect(url_for('login'))
+        
+        # Verify current password
+        if not user.check_password(current_password):
+            flash('Current password is incorrect.', 'error')
+            return render_template('change_password.html')
+        
+        # Check new password matches confirmation
+        if new_password != confirm_password:
+            flash('New passwords do not match.', 'error')
+            return render_template('change_password.html')
+        
+        # Validate new password strength
+        if len(new_password) < 8:
+            flash('New password must be at least 8 characters long.', 'error')
+            return render_template('change_password.html')
+        
+        # Update password
+        try:
+            user.password_hash = generate_password_hash(new_password)
+            db.session.commit()
+            flash('Password changed successfully!', 'success')
+            return redirect(url_for('setup'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error changing password: {str(e)}', 'error')
+            return render_template('change_password.html')
+    
+    return render_template('change_password.html')
 
 
 @app.route('/help')
