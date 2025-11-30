@@ -1,6 +1,7 @@
 # Git
 .git
 .gitattributes
+.gitignore
 .github
 
 # Virtual environments
@@ -12,9 +13,12 @@ env/
 # Python cache
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
 *$py.class
 *.so
 .Python
+*.egg
 *.egg-info/
 .eggs/
 dist/
