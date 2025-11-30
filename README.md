@@ -172,7 +172,7 @@ The application shows an alert when sanctions data is older than 14 days.
 
 ### How to Update
 
-1. Download new XML files from official sources:
+1. Download new XML files from official sources (verify these are the current official URLs):
    - **UN:** https://main.un.org/securitycouncil/en/content/un-sc-consolidated-list
    - **UK:** https://www.gov.uk/government/publications/the-uk-sanctions-list
    - **OFAC:** https://sanctionslist.ofac.treas.gov/Home/SdnList
