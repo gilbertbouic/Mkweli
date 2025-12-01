@@ -3,7 +3,13 @@
 # Mkweli AML - Ubuntu Installation Script
 # This script automatically installs Mkweli AML on Ubuntu systems.
 #
-# Usage: curl -fsSL https://raw.githubusercontent.com/gilbertbouic/Mkweli/main/scripts/install-ubuntu.sh | bash
+# Usage (one-liner):
+#   curl -fsSL https://raw.githubusercontent.com/gilbertbouic/Mkweli/main/scripts/install-ubuntu.sh | bash
+#
+# Usage (download and inspect first - recommended for security):
+#   curl -fsSL https://raw.githubusercontent.com/gilbertbouic/Mkweli/main/scripts/install-ubuntu.sh -o install-ubuntu.sh
+#   less install-ubuntu.sh   # Review the script
+#   bash install-ubuntu.sh   # Run if satisfied
 #
 # Requirements:
 #   - Ubuntu 20.04 or newer
