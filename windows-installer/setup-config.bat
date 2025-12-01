@@ -153,8 +153,19 @@ echo.
 :: Check if Docker is running
 docker info >nul 2>&1
 if not %errorlevel%==0 (
-    echo %YELLOW%Docker is not running. Starting Docker Desktop...%RESET%
-    start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+    echo %YELLOW%Docker is not running. Attempting to start Docker Desktop...%RESET%
+    
+    :: Try common Docker Desktop installation paths
+    if exist "C:\Program Files\Docker\Docker\Docker Desktop.exe" (
+        start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+    ) else if exist "%LOCALAPPDATA%\Docker\Docker Desktop.exe" (
+        start "" "%LOCALAPPDATA%\Docker\Docker Desktop.exe"
+    ) else if exist "%PROGRAMFILES%\Docker\Docker\Docker Desktop.exe" (
+        start "" "%PROGRAMFILES%\Docker\Docker\Docker Desktop.exe"
+    ) else (
+        echo %YELLOW%Could not locate Docker Desktop. Please start it manually from the Start Menu.%RESET%
+    )
+    
     echo Waiting for Docker to start...
     timeout /t 30 /nobreak >nul
 )
@@ -218,8 +229,8 @@ echo.
 docker-compose ps
 echo.
 
-:: Check if the application is responding
-curl -s -o nul -w "%%{http_code}" %APP_URL%/health >nul 2>&1
+:: Check if the application is responding (using root URL as fallback)
+curl -s -o nul -w "%%{http_code}" %APP_URL% >nul 2>&1
 if %errorlevel%==0 (
     echo %GREEN%Application is running and healthy%RESET%
     echo Dashboard: %APP_URL%

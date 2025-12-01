@@ -153,9 +153,22 @@ Sub StartApplication()
             "wait for it to fully start (green icon in taskbar), " & _
             "then try again.", vbExclamation, APP_NAME
         
-        ' Try to start Docker Desktop
+        ' Try to start Docker Desktop from common installation paths
         On Error Resume Next
-        WshShell.Run """C:\Program Files\Docker\Docker\Docker Desktop.exe""", 1, False
+        Dim dockerPath
+        dockerPath = ""
+        
+        If FSO.FileExists("C:\Program Files\Docker\Docker\Docker Desktop.exe") Then
+            dockerPath = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+        ElseIf FSO.FileExists(WshShell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Docker\Docker Desktop.exe") Then
+            dockerPath = WshShell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Docker\Docker Desktop.exe"
+        ElseIf FSO.FileExists(WshShell.ExpandEnvironmentStrings("%PROGRAMFILES%") & "\Docker\Docker\Docker Desktop.exe") Then
+            dockerPath = WshShell.ExpandEnvironmentStrings("%PROGRAMFILES%") & "\Docker\Docker\Docker Desktop.exe"
+        End If
+        
+        If dockerPath <> "" Then
+            WshShell.Run """" & dockerPath & """", 1, False
+        End If
         On Error GoTo 0
         Exit Sub
     End If
