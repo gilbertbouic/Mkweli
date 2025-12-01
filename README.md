@@ -18,133 +18,99 @@ Mkweli AML helps you check if a person or company appears on international sanct
 
 ---
 
-## Quick Start (5 Minutes)
+## Choose Your Installation Method
+
+| I am a... | Recommended Method |
+|-----------|-------------------|
+| **Windows User** (non-technical) | [One-Click Installer](#-windows-users-one-click-install) |
+| **Developer / Power User** | [Docker Setup](#-developers-docker-setup) |
+| **Ubuntu/Linux User** | [Docker Setup](#-developers-docker-setup) |
+
+---
+
+## 🖥️ Windows Users: One-Click Install
+
+**No terminal required!** Get up and running in 3 easy steps.
+
+### System Requirements
+
+| Requirement | Minimum |
+|------------|---------|
+| Windows | 10 or 11 (64-bit) |
+| RAM | 4 GB |
+| Disk Space | 5 GB free |
+
+### Step 1: Download the Installer
+
+👉 **[Download Mkweli AML Installer](https://github.com/gilbertbouic/Mkweli/releases)** (MkweliAML-Setup-x.x.x.exe)
+
+### Step 2: Run the Installer
+
+1. **Double-click** the downloaded file
+2. Click **Yes** if Windows asks for permission
+3. Follow the wizard: **Next → Accept → Install**
+4. If Docker is not installed, the installer will guide you to download it
+
+### Step 3: Launch & Use
+
+1. **Double-click** the **Mkweli AML** shortcut on your desktop
+2. Select **"1. Start Application"** from the menu
+3. Your browser opens automatically - login with password: `admin123`
+4. **Change your password immediately** (⚙️ → Change Password)
+
+**That's it! You're ready to screen names.** 🎉
+
+> 📖 For detailed instructions, see [WINDOWS_SETUP_GUIDE.md](WINDOWS_SETUP_GUIDE.md)
+
+---
+
+## 👨‍💻 Developers: Docker Setup
+
+For developers, power users, and Linux/Ubuntu users.
 
 ### What You Need
 
-- A computer with **Windows 10/11** or **Ubuntu 20.04+**
-- **Docker Desktop** installed (free download below)
+- **Windows 10/11** or **Ubuntu 20.04+**
+- **Docker Desktop** installed ([download here](https://www.docker.com/products/docker-desktop/))
 - **8 GB RAM** (minimum)
 - **5 GB disk space**
 
----
+### Install Docker
 
-## Step 1: Install Docker
-
-### Windows
-
-1. Go to https://www.docker.com/products/docker-desktop/
-2. Click **"Download for Windows"**
-3. Run the installer and follow the prompts
-4. **Restart your computer** when asked
-5. Open Docker Desktop and wait for it to start (green icon in taskbar)
-
-### Ubuntu
-
-Open a terminal and run these commands:
-
-```bash
-# Update system
-sudo apt update
-
-# Install Docker
-sudo apt install docker.io docker-compose -y
-
-# Allow your user to run Docker
-sudo usermod -aG docker $USER
-
-# Log out and log back in for changes to take effect
-```
-
----
-
-## Step 2: Download Mkweli
-
-### Windows (PowerShell)
-
-1. Press `Windows + X` and click **"Windows PowerShell"**
-2. Run these commands:
-
-```powershell
-# Download Mkweli
-git clone https://github.com/gilbertbouic/Mkweli.git
-
-# Go to the folder
-cd Mkweli
-
-# Create settings file
-copy .env.example .env
-```
-
-### Ubuntu (Terminal)
-
-Open a terminal and run:
-
-```bash
-# Download Mkweli
-git clone https://github.com/gilbertbouic/Mkweli.git
-
-# Go to the folder
-cd Mkweli
-
-# Create settings file
-cp .env.example .env
-```
-
----
-
-## Step 3: Start the Application
-
-Run this command (same for Windows and Ubuntu):
-
-```bash
-docker-compose up -d
-```
-
-**Wait 1-2 minutes** for the first startup. The application is loading sanctions data.
-
----
-
-## Step 4: Open the Application
-
-1. Open your web browser
-2. Go to: **http://localhost:8000**
-3. Enter password: `admin123`
-4. **Important:** Change the password immediately (see First-Time Setup)
-
----
-
-## First-Time Setup
-
-### Change Your Password
-
-1. Log in with password `admin123`
-2. Click the **gear icon** (⚙️) in the top menu
-3. Click **"Change Password"**
-4. Enter your current password (`admin123`)
-5. Enter a new strong password (at least 12 characters)
-6. Click **"Change Password"**
-
-### Generate a Secret Key (Recommended)
-
-For better security, generate a unique secret key:
-
-**Windows (PowerShell):**
-```powershell
-python -c "import secrets; print(secrets.token_hex(32))"
-```
+**Windows:**
+1. Download [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+2. Run the installer and restart when prompted
+3. Open Docker Desktop and wait for it to start
 
 **Ubuntu:**
 ```bash
-python3 -c "import secrets; print(secrets.token_hex(32))"
+sudo apt update
+sudo apt install docker.io docker-compose -y
+sudo usermod -aG docker $USER
+# Log out and back in
 ```
 
-Copy the output and paste it in your `.env` file, replacing `your-secure-secret-key-here-change-me`.
+### Download & Run Mkweli
 
-Then restart the application:
 ```bash
-docker-compose restart
+# Clone the repository
+git clone https://github.com/gilbertbouic/Mkweli.git
+cd Mkweli
+
+# Create configuration file
+cp .env.example .env  # Linux/Mac
+# OR
+copy .env.example .env  # Windows
+
+# Start the application
+docker-compose up -d
 ```
+
+**Wait 1-2 minutes** for the first startup, then open: **http://localhost:8000**
+
+Default password: `admin123` (change immediately!)
+
+---
 
 ---
 
