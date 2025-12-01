@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mkweli AML - Daily Usage Guide</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary: #1e40af;
+            --primary-light: #3b82f6;
+            --accent: #059669;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #f9fafb;
+            --white: #ffffff;
+            --border: #e5e7eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --morning: #fbbf24;
+            --afternoon: #f97316;
+            --evening: #8b5cf6;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.7;
+            color: var(--text);
+            background: var(--bg);
+            padding: 2rem;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            padding: 2rem 3rem;
+        }
+        h1 {
+            color: var(--primary);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: var(--text-light);
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+        h2 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin: 2.5rem 0 1rem;
+            padding-top: 1rem;
+            border-top: 2px solid var(--border);
+        }
+        h2:first-of-type {
+            border-top: none;
+            padding-top: 0;
+        }
+        h3 {
+            color: var(--text);
+            font-size: 1.2rem;
+            margin: 1.5rem 0 0.75rem;
+        }
+        p { margin-bottom: 1rem; }
+        
+        ol, ul {
+            margin: 1rem 0 1rem 1.5rem;
+        }
+        li {
+            margin-bottom: 0.75rem;
+        }
+        
+        .os-tabs {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .os-tab {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            background: var(--white);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .os-tab:hover {
+            border-color: var(--primary);
+        }
+        .os-tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .os-content {
+            display: none;
+        }
+        .os-content.active {
+            display: block;
+        }
+        
+        .time-section {
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            margin: 1.5rem 0;
+        }
+        .time-section.morning {
+            background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%);
+            border-left: 4px solid var(--morning);
+        }
+        .time-section.afternoon {
+            background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%);
+            border-left: 4px solid var(--afternoon);
+        }
+        .time-section.evening {
+            background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+            border-left: 4px solid var(--evening);
+        }
+        .time-section h3 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .time-icon {
+            font-size: 1.5rem;
+        }
+        
+        .step-box {
+            background: var(--white);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin: 0.75rem 0;
+        }
+        .step-box h4 {
+            color: var(--text);
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .code-box {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin: 0.5rem 0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+        
+        .info-box {
+            padding: 1rem 1.25rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            display: flex;
+            gap: 0.75rem;
+        }
+        .info-box.info {
+            background: #eff6ff;
+            border-left: 4px solid var(--primary);
+        }
+        .info-box.success {
+            background: #f0fdf4;
+            border-left: 4px solid var(--success);
+        }
+        .info-box.warning {
+            background: #fffbeb;
+            border-left: 4px solid var(--warning);
+        }
+        .info-box.danger {
+            background: #fef2f2;
+            border-left: 4px solid var(--danger);
+        }
+        .info-box .icon { font-size: 1.25rem; }
+        .info-box .content { flex: 1; }
+        
+        .warning-box {
+            background: #fef2f2;
+            border: 2px solid var(--danger);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .warning-box h4 {
+            color: var(--danger);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .dont-list {
+            background: #fef2f2;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+        .dont-list h4 {
+            color: var(--danger);
+            margin-bottom: 1rem;
+        }
+        .dont-list li {
+            color: var(--danger);
+        }
+        
+        .do-list {
+            background: #f0fdf4;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+        .do-list h4 {
+            color: var(--success);
+            margin-bottom: 1rem;
+        }
+        .do-list li {
+            color: var(--text);
+        }
+        
+        .keyboard-key {
+            background: #374151;
+            color: white;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+        
+        .footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid var(--border);
+            text-align: center;
+            color: var(--text-light);
+        }
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 640px) {
+            body { padding: 1rem; }
+            .container { padding: 1.5rem; }
+            h1 { font-size: 1.5rem; }
+            h2 { font-size: 1.25rem; }
+            .os-tabs { flex-direction: column; }
+        }
+        
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📅 Daily Usage Guide</h1>
+        <p class="subtitle">Learn how to use Mkweli AML throughout your workday - for both Windows and Ubuntu users</p>
+        
+        <!-- OS Selection -->
+        <div class="info-box info">
+            <span class="icon">💻</span>
+            <div class="content">
+                <strong>Select Your Operating System</strong><br>
+                Click on your system to see the right instructions for you.
+            </div>
+        </div>
+        
+        <div class="os-tabs">
+            <button class="os-tab active" onclick="switchOS('windows')">🪟 Windows</button>
+            <button class="os-tab" onclick="switchOS('ubuntu')">🐧 Ubuntu</button>
+        </div>
+
+        <!-- Morning Section -->
+        <h2>🌅 Morning: Starting Your Day</h2>
+        
+        <div class="time-section morning">
+            <h3><span class="time-icon">☀️</span> How to Start Mkweli AML</h3>
+            
+            <div class="os-content windows active" id="morning-windows">
+                <div class="step-box">
+                    <h4>Step 1: Turn on your computer and log in</h4>
+                    <p>Wait for Windows to fully load. You'll see your desktop with icons.</p>
+                </div>
+                
+                <div class="step-box">
+                    <h4>Step 2: Wait for Docker to start</h4>
+                    <p>Look at the bottom-right corner of your screen (near the clock). Wait until you see a whale icon 🐳. If the whale is moving/animating, wait until it stops - this means Docker is ready.</p>
+                    <p><strong>Don't see the whale?</strong> Click Start, type "Docker Desktop", and click to open it.</p>
+                </div>
+                
+                <div class="step-box">
+                    <h4>Step 3: Start Mkweli</h4>
+                    <ol>
+                        <li>Double-click the <strong>Mkweli AML</strong> shortcut on your desktop</li>
+                        <li>A menu window will appear</li>
+                        <li>Type <strong>1</strong> and press Enter (or click "Start Application")</li>
+                    </ol>
+                </div>
+                
+                <div class="step-box">
+                    <h4>Step 4: Wait for the browser to open</h4>
+                    <p>Your web browser will open automatically in about 30 seconds. If it doesn't, open your browser and go to: <strong>http://localhost:8000</strong></p>
+                </div>
+                
+                <div class="step-box">
+                    <h4>Step 5: Log in</h4>
+                    <p>Enter your username and password, then click Login. You're ready to work!</p>
+                </div>
+            </div>
+            
+            <div class="os-content ubuntu" id="morning-ubuntu">
+                <div class="step-box">
+                    <h4>Step 1: Turn on your computer and log in</h4>
+                    <p>Wait for Ubuntu to fully load.</p>
+                </div>
+                
+                <div class="step-box">
+                    <h4>Step 2: Check if Mkweli is already running</h4>
+                    <p>Open your browser and go to: <strong>http://localhost:8000</strong></p>
+                    <p>If you see the login page, skip to Step 5! If not, continue to Step 3.</p>
+                </div>
+                
+                <div class="step-box">
+                    <h4>Step 3: Open Terminal</h4>
+                    <p>Press <span class="keyboard-key">Ctrl</span> + <span class="keyboard-key">Alt</span> + <span class="keyboard-key">T</span> to open Terminal.</p>
+                </div>
+                
+                <div class="step-box">
+                    <h4>Step 4: Start Mkweli</h4>
+                    <p>Type this command and press Enter:</p>
+                    <div class="code-box">cd ~/Mkweli && docker-compose up -d</div>
+                    <p>Wait about 30 seconds for it to start.</p>
+                </div>
+                
+                <div class="step-box">
+                    <h4>Step 5: Open Mkweli</h4>
+                    <p>Open your browser and go to: <strong>http://localhost:8000</strong></p>
+                    <p>Log in with your username and password. You're ready to work!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Afternoon Section -->
+        <h2>☀️ Afternoon: Using Mkweli</h2>
+        
+        <div class="time-section afternoon">
+            <h3><span class="time-icon">💼</span> Basic Features</h3>
+            
+            <div class="step-box">
+                <h4>Quick Check: Screen a Single Name</h4>
+                <ol>
+                    <li>From the dashboard, click <strong>"Quick Check"</strong></li>
+                    <li>Enter the name you want to screen</li>
+                    <li>Optionally add date of birth and nationality</li>
+                    <li>Click <strong>"Check"</strong></li>
+                    <li>Review the results - you'll see if there are any matches</li>
+                </ol>
+            </div>
+            
+            <div class="step-box">
+                <h4>Batch Screening: Check Many Names at Once</h4>
+                <ol>
+                    <li>From the dashboard, click <strong>"Upload List"</strong></li>
+                    <li>Click <strong>"Choose File"</strong></li>
+                    <li>Select your CSV or Excel file with names</li>
+                    <li>Click <strong>"Upload and Screen"</strong></li>
+                    <li>Wait for processing (this may take a few minutes for large files)</li>
+                    <li>Download the PDF report when ready</li>
+                </ol>
+                <div class="info-box info">
+                    <span class="icon">📄</span>
+                    <div class="content">
+                        <strong>File Format</strong><br>
+                        Your file should have columns for: Name, Date of Birth (optional), Nationality (optional). The first row should be headers.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step-box">
+                <h4>Understanding Results</h4>
+                <ul>
+                    <li><strong>No Matches Found</strong> - The name is not on any sanctions list (good!)</li>
+                    <li><strong>Potential Match</strong> - A similar name was found - review carefully</li>
+                    <li><strong>Exact Match</strong> - The exact name appears on a sanctions list - verify immediately</li>
+                </ul>
+            </div>
+            
+            <div class="step-box">
+                <h4>Saving Reports</h4>
+                <ol>
+                    <li>After screening, click <strong>"Download Report"</strong></li>
+                    <li>Save the PDF file to a safe location</li>
+                    <li>Reports include a unique hash for verification purposes</li>
+                </ol>
+            </div>
+        </div>
+        
+        <div class="info-box success">
+            <span class="icon">💡</span>
+            <div class="content">
+                <strong>Tip: Leave Mkweli Running!</strong><br>
+                You can leave Mkweli running all day. Just close the browser tab when you're not using it - the application will still be running and ready when you come back.
+            </div>
+        </div>
+
+        <!-- Evening Section -->
+        <h2>🌙 Evening: Closing Down</h2>
+        
+        <div class="time-section evening">
+            <h3><span class="time-icon">🌜</span> How to Properly Close Mkweli</h3>
+            
+            <div class="os-content windows active" id="evening-windows">
+                <div class="step-box">
+                    <h4>Option A: Leave it running (Recommended)</h4>
+                    <p>You can simply close your browser and leave Mkweli running. It will be ready instantly tomorrow morning!</p>
+                </div>
+                
+                <div class="step-box">
+                    <h4>Option B: Stop Mkweli completely</h4>
+                    <ol>
+                        <li>Save any work you haven't saved</li>
+                        <li>Double-click the <strong>Mkweli AML</strong> shortcut on your desktop</li>
+                        <li>Type <strong>2</strong> and press Enter (or click "Stop Application")</li>
+                        <li>Wait for the confirmation message</li>
+                        <li>You can now shut down your computer</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="os-content ubuntu" id="evening-ubuntu">
+                <div class="step-box">
+                    <h4>Option A: Leave it running (Recommended)</h4>
+                    <p>You can simply close your browser and leave Mkweli running. It will be ready instantly tomorrow morning!</p>
+                </div>
+                
+                <div class="step-box">
+                    <h4>Option B: Stop Mkweli completely</h4>
+                    <ol>
+                        <li>Save any work you haven't saved</li>
+                        <li>Open Terminal (<span class="keyboard-key">Ctrl</span> + <span class="keyboard-key">Alt</span> + <span class="keyboard-key">T</span>)</li>
+                        <li>Type this command and press Enter:</li>
+                    </ol>
+                    <div class="code-box">cd ~/Mkweli && docker-compose down</div>
+                    <p>Wait for the confirmation message, then you can shut down your computer.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Next Morning Section -->
+        <h2>🌄 Next Morning: Restarting</h2>
+        
+        <div class="step-box">
+            <h4>If you left Mkweli running</h4>
+            <p>Great news! Just open your browser and go to <strong>http://localhost:8000</strong>. Log in and you're ready to go!</p>
+        </div>
+        
+        <div class="step-box">
+            <h4>If you stopped Mkweli last night</h4>
+            <p>Follow the "Morning: Starting Your Day" instructions above to start Mkweli again.</p>
+        </div>
+
+        <!-- What NOT to Do -->
+        <h2>⚠️ Important: What NOT to Do</h2>
+        
+        <div class="dont-list">
+            <h4>❌ DON'T Do These Things:</h4>
+            <ul>
+                <li><strong>Don't force-close</strong> - Never use Task Manager (Windows) or "kill" command (Ubuntu) to close Mkweli. This can corrupt your data.</li>
+                <li><strong>Don't delete files</strong> - Never delete files from the Mkweli folder unless you know exactly what you're doing.</li>
+                <li><strong>Don't uninstall Docker</strong> - Mkweli needs Docker to run. If you uninstall Docker, Mkweli will stop working.</li>
+                <li><strong>Don't share your password</strong> - Your login credentials are for you only.</li>
+                <li><strong>Don't ignore the "Update Data" warning</strong> - When Mkweli says sanctions data is old, update it as soon as possible.</li>
+                <li><strong>Don't run multiple copies</strong> - Only run one instance of Mkweli at a time.</li>
+            </ul>
+        </div>
+        
+        <div class="do-list">
+            <h4>✅ DO These Things:</h4>
+            <ul>
+                <li><strong>Do save reports</strong> - Always download and save your screening reports to a safe location.</li>
+                <li><strong>Do use the proper stop command</strong> - When stopping Mkweli, use the launcher menu or the correct terminal command.</li>
+                <li><strong>Do keep Docker running</strong> - Make sure Docker Desktop (Windows) is running before starting Mkweli.</li>
+                <li><strong>Do update sanctions data regularly</strong> - Check for updates at least every 2 weeks.</li>
+                <li><strong>Do log out when away</strong> - If stepping away from your computer, log out of Mkweli for security.</li>
+                <li><strong>Do backup your data</strong> - Periodically backup the Mkweli folder to an external drive or cloud storage.</li>
+            </ul>
+        </div>
+
+        <!-- Quick Reference -->
+        <h2>📋 Quick Reference Card</h2>
+        
+        <div class="os-content windows active" id="ref-windows">
+            <table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
+                <tr style="background: var(--primary); color: white;">
+                    <th style="padding: 0.75rem; text-align: left;">Action</th>
+                    <th style="padding: 0.75rem; text-align: left;">How to Do It</th>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">Start Mkweli</td>
+                    <td style="padding: 0.75rem;">Desktop shortcut → "Start Application"</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">Stop Mkweli</td>
+                    <td style="padding: 0.75rem;">Desktop shortcut → "Stop Application"</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">Open Dashboard</td>
+                    <td style="padding: 0.75rem;">Browser → http://localhost:8000</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">Check Status</td>
+                    <td style="padding: 0.75rem;">Desktop shortcut → "Check Status"</td>
+                </tr>
+                <tr>
+                    <td style="padding: 0.75rem;">Get Help</td>
+                    <td style="padding: 0.75rem;">Email: gilbert@mkweli.tech</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="os-content ubuntu" id="ref-ubuntu">
+            <table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
+                <tr style="background: var(--primary); color: white;">
+                    <th style="padding: 0.75rem; text-align: left;">Action</th>
+                    <th style="padding: 0.75rem; text-align: left;">Command</th>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">Open Terminal</td>
+                    <td style="padding: 0.75rem;"><span class="keyboard-key">Ctrl</span>+<span class="keyboard-key">Alt</span>+<span class="keyboard-key">T</span></td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">Start Mkweli</td>
+                    <td style="padding: 0.75rem;"><code>cd ~/Mkweli && docker-compose up -d</code></td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">Stop Mkweli</td>
+                    <td style="padding: 0.75rem;"><code>cd ~/Mkweli && docker-compose down</code></td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">Check Status</td>
+                    <td style="padding: 0.75rem;"><code>docker ps</code></td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">View Logs</td>
+                    <td style="padding: 0.75rem;"><code>cd ~/Mkweli && docker-compose logs</code></td>
+                </tr>
+                <tr>
+                    <td style="padding: 0.75rem;">Open Dashboard</td>
+                    <td style="padding: 0.75rem;">Browser → http://localhost:8000</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="info-box success" style="margin-top: 2rem;">
+            <span class="icon">🎓</span>
+            <div class="content">
+                <strong>You're all set!</strong><br>
+                You now know everything you need for daily use of Mkweli AML. If you run into problems, check the <a href="setup-verification.html">Setup Verification Checklist</a> or contact support.
+            </div>
+        </div>
+        
+        <footer class="footer">
+            <p><strong>Mkweli AML</strong> - Free and Open Source Sanctions Screening</p>
+            <p><a href="https://mkweli.tech">mkweli.tech</a> | <a href="https://github.com/gilbertbouic/Mkweli">GitHub</a> | <a href="mailto:gilbert@mkweli.tech">Support</a></p>
+        </footer>
+    </div>
+    
+    <script>
+        function switchOS(os) {
+            // Update tabs
+            document.querySelectorAll('.os-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update content sections
+            document.querySelectorAll('.os-content').forEach(content => {
+                if (content.classList.contains(os)) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

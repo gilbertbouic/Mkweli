@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mkweli AML - Complete Ubuntu Installation Guide</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary: #1e40af;
+            --primary-light: #3b82f6;
+            --accent: #059669;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #f9fafb;
+            --white: #ffffff;
+            --border: #e5e7eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --ubuntu: #E95420;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.7;
+            color: var(--text);
+            background: var(--bg);
+            padding: 2rem;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            padding: 2rem 3rem;
+        }
+        h1 {
+            color: var(--ubuntu);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .subtitle {
+            color: var(--text-light);
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+        h2 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin: 2.5rem 0 1rem;
+            padding-top: 1rem;
+            border-top: 2px solid var(--border);
+        }
+        h2:first-of-type {
+            border-top: none;
+            padding-top: 0;
+        }
+        h3 {
+            color: var(--text);
+            font-size: 1.2rem;
+            margin: 1.5rem 0 0.75rem;
+        }
+        p { margin-bottom: 1rem; }
+        
+        .toc {
+            background: var(--bg);
+            padding: 1.5rem 2rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+        }
+        .toc h3 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+        .toc ol {
+            margin: 1rem 0 0 1.5rem;
+        }
+        .toc li {
+            margin-bottom: 0.5rem;
+        }
+        .toc a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        
+        .numbered-step {
+            display: flex;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            align-items: flex-start;
+        }
+        .step-number {
+            background: var(--ubuntu);
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .step-content {
+            flex: 1;
+        }
+        .step-content h4 {
+            margin: 0 0 0.5rem 0;
+            color: var(--text);
+        }
+        
+        ol, ul {
+            margin: 1rem 0 1rem 1.5rem;
+        }
+        li {
+            margin-bottom: 0.75rem;
+        }
+        
+        .info-box {
+            padding: 1rem 1.25rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            display: flex;
+            gap: 0.75rem;
+        }
+        .info-box.info {
+            background: #eff6ff;
+            border-left: 4px solid var(--primary);
+        }
+        .info-box.success {
+            background: #f0fdf4;
+            border-left: 4px solid var(--success);
+        }
+        .info-box.warning {
+            background: #fffbeb;
+            border-left: 4px solid var(--warning);
+        }
+        .info-box.danger {
+            background: #fef2f2;
+            border-left: 4px solid var(--danger);
+        }
+        .info-box .icon { font-size: 1.25rem; }
+        .info-box .content { flex: 1; }
+        
+        .keyboard-key {
+            background: #374151;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        
+        .code-box {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem 1.25rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.95rem;
+            overflow-x: auto;
+            position: relative;
+        }
+        .code-box code {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .code-box .copy-hint {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.75rem;
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-family: sans-serif;
+        }
+        
+        .one-liner-box {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: #fbbf24;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1.5rem 0;
+            border: 2px solid var(--ubuntu);
+        }
+        .one-liner-box h4 {
+            color: white;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+        .one-liner-box code {
+            display: block;
+            padding: 1rem;
+            background: rgba(0,0,0,0.3);
+            border-radius: 6px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+        .one-liner-box p {
+            color: #94a3b8;
+            margin-top: 1rem;
+            margin-bottom: 0;
+            font-size: 0.9rem;
+        }
+        
+        .screenshot-placeholder {
+            background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+            padding: 2rem;
+            border-radius: 8px;
+            text-align: center;
+            margin: 1rem 0;
+            border: 2px dashed var(--border);
+        }
+        .screenshot-placeholder .icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .screenshot-placeholder p {
+            margin: 0;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+        }
+        .btn-primary {
+            background: var(--ubuntu);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #d4470f;
+        }
+        
+        .troubleshoot-item {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin: 1rem 0;
+        }
+        .troubleshoot-item h4 {
+            color: var(--danger);
+            margin-bottom: 0.5rem;
+        }
+        .troubleshoot-item .solution {
+            background: var(--white);
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin-top: 0.5rem;
+        }
+        .troubleshoot-item .solution strong {
+            color: var(--accent);
+        }
+        
+        .daily-step {
+            background: var(--white);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+        .daily-step h4 {
+            color: var(--ubuntu);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+        
+        .warning-box {
+            background: #fef2f2;
+            border: 2px solid var(--danger);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .warning-box h4 {
+            color: var(--danger);
+            margin-bottom: 0.5rem;
+        }
+        
+        .footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid var(--border);
+            text-align: center;
+            color: var(--text-light);
+        }
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 640px) {
+            body { padding: 1rem; }
+            .container { padding: 1.5rem; }
+            h1 { font-size: 1.5rem; }
+            h2 { font-size: 1.25rem; }
+            .numbered-step { flex-direction: column; }
+            .one-liner-box code { font-size: 0.8rem; }
+        }
+        
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; }
+            .btn { border: 1px solid var(--text); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐧 Complete Ubuntu Installation Guide</h1>
+        <p class="subtitle">A step-by-step guide to install Mkweli AML on Ubuntu Linux. No technical knowledge required - we'll explain everything!</p>
+        
+        <!-- Table of Contents -->
+        <nav class="toc">
+            <h3>📋 What's in this guide</h3>
+            <ol>
+                <li><a href="#what-is-terminal">What is Terminal? (and how to open it)</a></li>
+                <li><a href="#one-liner">One-Command Installation</a></li>
+                <li><a href="#verify">Verify Installation Worked</a></li>
+                <li><a href="#first-launch">First Launch</a></li>
+                <li><a href="#change-password">Change Your Password</a></li>
+                <li><a href="#daily-workflow">Daily Workflow</a></li>
+                <li><a href="#next-day">Next-Day Restart</a></li>
+                <li><a href="#troubleshooting">Troubleshooting</a></li>
+            </ol>
+        </nav>
+        
+        <div class="info-box info">
+            <span class="icon">ℹ️</span>
+            <div class="content">
+                <strong>Before You Start</strong><br>
+                This guide assumes you have never used the Terminal before. We'll explain everything step by step. The installation takes about 10-15 minutes.
+            </div>
+        </div>
+
+        <!-- Section 1: What is Terminal -->
+        <section id="what-is-terminal">
+            <h2>1. What is Terminal? (and how to open it)</h2>
+            
+            <p>The <strong>Terminal</strong> (sometimes called "command line" or "shell") is a program where you type commands to your computer instead of clicking buttons. Think of it like having a text conversation with your computer.</p>
+            
+            <div class="info-box info">
+                <span class="icon">💡</span>
+                <div class="content">
+                    <strong>Don't worry!</strong><br>
+                    The Terminal might look intimidating at first, but for this installation you just need to copy and paste one command. We'll show you exactly how!
+                </div>
+            </div>
+            
+            <h3>How to Open Terminal on Ubuntu</h3>
+            
+            <h4>Method 1: Keyboard Shortcut (Easiest!)</h4>
+            <p>Press these three keys at the same time:</p>
+            <p><span class="keyboard-key">Ctrl</span> + <span class="keyboard-key">Alt</span> + <span class="keyboard-key">T</span></p>
+            <p>A window with a dark background will open - this is the Terminal!</p>
+            
+            <h4>Method 2: Using the Activities Menu</h4>
+            <div class="numbered-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Click "Activities" in the top-left corner</h4>
+                    <p>Look at the very top-left corner of your screen. Click on the word <strong>Activities</strong>.</p>
+                    <div class="screenshot-placeholder">
+                        <div class="icon">🖼️</div>
+                        <p>"Activities" is in the top-left corner of your Ubuntu desktop</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>Type "Terminal"</h4>
+                    <p>With the Activities view open, just start typing the word <strong>Terminal</strong>. You don't need to click anywhere - just type!</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>Click the Terminal icon</h4>
+                    <p>You'll see a black/dark icon with a white rectangle inside. Click on it to open Terminal.</p>
+                    <div class="screenshot-placeholder">
+                        <div class="icon">🖼️</div>
+                        <p>The Terminal icon looks like a black box with a white cursor inside</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-box success">
+                <span class="icon">✅</span>
+                <div class="content">
+                    <strong>What you should see</strong><br>
+                    A dark window will open with some text and a blinking cursor. It might show something like: <code>yourname@yourcomputer:~$</code> - this means the Terminal is ready for you to type!
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: One-Liner Installation -->
+        <section id="one-liner">
+            <h2>2. One-Command Installation</h2>
+            
+            <p>The easiest way to install Mkweli AML is with our automatic installer. Just copy and paste one command!</p>
+            
+            <div class="one-liner-box">
+                <h4>🚀 Copy and paste this entire command:</h4>
+                <code>curl -fsSL https://raw.githubusercontent.com/gilbertbouic/Mkweli/main/scripts/install-ubuntu.sh | bash</code>
+                <p>💡 This command downloads and runs our installation script automatically.</p>
+            </div>
+            
+            <div class="info-box info">
+                <span class="icon">🔒</span>
+                <div class="content">
+                    <strong>Security Note</strong><br>
+                    If you prefer to inspect the script before running it, you can:
+                    <ol style="margin: 0.5rem 0 0 1.5rem;">
+                        <li>Download: <code>curl -fsSL https://raw.githubusercontent.com/gilbertbouic/Mkweli/main/scripts/install-ubuntu.sh -o install-ubuntu.sh</code></li>
+                        <li>Review: <code>less install-ubuntu.sh</code></li>
+                        <li>Run: <code>bash install-ubuntu.sh</code></li>
+                    </ol>
+                </div>
+            </div>
+            
+            <h3>How to copy and paste in Terminal</h3>
+            
+            <div class="numbered-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Copy the command above</h4>
+                    <p>Use your mouse to highlight the command in the orange box above. Then:</p>
+                    <ul>
+                        <li>Right-click and select "Copy", OR</li>
+                        <li>Press <span class="keyboard-key">Ctrl</span> + <span class="keyboard-key">C</span></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>Click inside the Terminal window</h4>
+                    <p>Click anywhere inside the Terminal window to make sure it's active.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>Paste the command</h4>
+                    <p><strong>Important:</strong> In Terminal, the paste shortcut is different!</p>
+                    <ul>
+                        <li>Right-click and select "Paste", OR</li>
+                        <li>Press <span class="keyboard-key">Ctrl</span> + <span class="keyboard-key">Shift</span> + <span class="keyboard-key">V</span></li>
+                    </ul>
+                    <p>You should see the command appear in the Terminal.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h4>Press Enter to run</h4>
+                    <p>Press the <span class="keyboard-key">Enter</span> key to run the command.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <h4>Enter your password when asked</h4>
+                    <p>The installer needs permission to install software. When it asks for your password:</p>
+                    <ul>
+                        <li>Type your Ubuntu login password</li>
+                        <li><strong>Note:</strong> You won't see the letters as you type - this is normal for security!</li>
+                        <li>Press <span class="keyboard-key">Enter</span> when done</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">6</div>
+                <div class="step-content">
+                    <h4>Wait for installation to complete</h4>
+                    <p>The installer will:</p>
+                    <ul>
+                        <li>Install Docker (if not already installed)</li>
+                        <li>Download Mkweli AML</li>
+                        <li>Set everything up automatically</li>
+                    </ul>
+                    <p>This takes about <strong>5-10 minutes</strong>. You'll see lots of text scrolling - that's normal!</p>
+                </div>
+            </div>
+            
+            <div class="info-box warning">
+                <span class="icon">⚠️</span>
+                <div class="content">
+                    <strong>Stay connected to the internet!</strong><br>
+                    The installation downloads about 500MB of data. Make sure you have a stable internet connection.
+                </div>
+            </div>
+            
+            <h3>Alternative: Manual Installation</h3>
+            <p>If the one-liner doesn't work, you can run these commands one at a time:</p>
+            
+            <div class="code-box">
+                <span class="copy-hint">Copy each line</span>
+                <code># Install Docker
+sudo apt update
+sudo apt install -y docker.io docker-compose
+
+# Add yourself to docker group
+sudo usermod -aG docker $USER
+
+# Download Mkweli
+git clone https://github.com/gilbertbouic/Mkweli.git
+cd Mkweli
+
+# Create config file
+cp .env.example .env
+
+# Start Mkweli
+docker-compose up -d</code>
+            </div>
+            
+            <div class="info-box info">
+                <span class="icon">ℹ️</span>
+                <div class="content">
+                    <strong>After manual installation</strong><br>
+                    You need to log out and log back in for Docker permissions to work. Click the power icon in the top-right corner and select "Log Out".
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Verify Installation -->
+        <section id="verify">
+            <h2>3. Verify Installation Worked</h2>
+            
+            <p>Let's make sure everything installed correctly.</p>
+            
+            <div class="numbered-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Check Docker is running</h4>
+                    <p>Open Terminal and type this command, then press Enter:</p>
+                    <div class="code-box">
+                        <code>docker ps</code>
+                    </div>
+                    <p>You should see a table with columns like "CONTAINER ID", "IMAGE", etc. If you see "mkweli" in the list, Mkweli is running!</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>Open Mkweli in your browser</h4>
+                    <p>Open your web browser (Firefox is usually pre-installed on Ubuntu).</p>
+                    <p>In the address bar, type: <strong>http://localhost:8000</strong></p>
+                    <p>Press Enter.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>You should see the login page</h4>
+                    <p>If you see the Mkweli AML login page, congratulations - installation was successful!</p>
+                </div>
+            </div>
+            
+            <div class="info-box success">
+                <span class="icon">✅</span>
+                <div class="content">
+                    <strong>Success indicators:</strong>
+                    <ul>
+                        <li>✓ <code>docker ps</code> shows containers running</li>
+                        <li>✓ Browser shows Mkweli login page at localhost:8000</li>
+                        <li>✓ No error messages in Terminal</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: First Launch -->
+        <section id="first-launch">
+            <h2>4. First Launch</h2>
+            
+            <div class="numbered-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Open your web browser</h4>
+                    <p>Click on the Firefox icon in your dock, or press <span class="keyboard-key">Super</span> (Windows key) and type "Firefox".</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>Go to Mkweli</h4>
+                    <p>In the address bar, type:</p>
+                    <div class="code-box">
+                        <code>http://localhost:8000</code>
+                    </div>
+                    <p>Press Enter.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>Log in</h4>
+                    <p>On the login page, enter:</p>
+                    <ul>
+                        <li><strong>Username:</strong> admin</li>
+                        <li><strong>Password:</strong> admin123</li>
+                    </ul>
+                    <p>Click <strong>Login</strong>.</p>
+                </div>
+            </div>
+            
+            <div class="info-box success">
+                <span class="icon">🎉</span>
+                <div class="content">
+                    <strong>You're in!</strong><br>
+                    You should now see the Mkweli AML dashboard. You're ready to start screening names!
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Change Password -->
+        <section id="change-password">
+            <h2>5. Change Your Password (Very Important!)</h2>
+            
+            <div class="warning-box">
+                <h4>⚠️ Security Warning</h4>
+                <p>The default password "admin123" is known to everyone. You must change it immediately to keep your data safe!</p>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Click the gear icon ⚙️</h4>
+                    <p>In the top-right corner of the dashboard, click on the gear icon or your username.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>Select "Change Password"</h4>
+                    <p>Click on <strong>Change Password</strong> in the dropdown menu.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>Create a new password</h4>
+                    <p>Your new password must be:</p>
+                    <ul>
+                        <li>At least <strong>12 characters</strong> long</li>
+                        <li>Include at least one <strong>uppercase letter</strong> (A-Z)</li>
+                        <li>Include at least one <strong>number</strong> (0-9)</li>
+                        <li>Include at least one <strong>special character</strong> (!@#$%^&amp;*)</li>
+                    </ul>
+                    <p>Example: <strong>MySecure2024!</strong></p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h4>Save your new password</h4>
+                    <p>Click the save button. Write down your password and keep it safe!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Daily Workflow -->
+        <section id="daily-workflow">
+            <h2>6. Daily Workflow</h2>
+            
+            <p>Here's how to use Mkweli AML on a typical day:</p>
+            
+            <div class="daily-step">
+                <h4>🌅 Morning: Start the App</h4>
+                <p>Mkweli usually stays running, but if you need to start it:</p>
+                <ol>
+                    <li>Open Terminal (<span class="keyboard-key">Ctrl</span> + <span class="keyboard-key">Alt</span> + <span class="keyboard-key">T</span>)</li>
+                    <li>Type: <code>cd ~/Mkweli && docker-compose up -d</code></li>
+                    <li>Press Enter</li>
+                    <li>Open browser and go to <strong>http://localhost:8000</strong></li>
+                </ol>
+            </div>
+            
+            <div class="daily-step">
+                <h4>☀️ During the Day: Use the App</h4>
+                <ol>
+                    <li>Open your browser to <strong>http://localhost:8000</strong></li>
+                    <li>Log in with your password</li>
+                    <li>Use "Quick Check" for single names</li>
+                    <li>Use "Upload List" for many names (CSV/Excel)</li>
+                    <li>Download and save your reports</li>
+                </ol>
+            </div>
+            
+            <div class="daily-step">
+                <h4>🌙 Evening: Stop the App (optional)</h4>
+                <p>You can leave Mkweli running, but if you want to stop it:</p>
+                <ol>
+                    <li>Open Terminal</li>
+                    <li>Type: <code>cd ~/Mkweli && docker-compose down</code></li>
+                    <li>Press Enter</li>
+                </ol>
+            </div>
+            
+            <div class="info-box info">
+                <span class="icon">💡</span>
+                <div class="content">
+                    <strong>Tip: Bookmark the page!</strong><br>
+                    Press <span class="keyboard-key">Ctrl</span> + <span class="keyboard-key">D</span> in your browser to bookmark http://localhost:8000 for quick access.
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 7: Next-Day Restart -->
+        <section id="next-day">
+            <h2>7. Next-Day Restart Procedure</h2>
+            
+            <h3>If Mkweli is still running (common)</h3>
+            <p>Usually Mkweli stays running even after you restart your computer. Just:</p>
+            <ol>
+                <li>Open your browser</li>
+                <li>Go to <strong>http://localhost:8000</strong></li>
+                <li>Log in and start working!</li>
+            </ol>
+            
+            <h3>If Mkweli is not running</h3>
+            <div class="numbered-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Open Terminal</h4>
+                    <p>Press <span class="keyboard-key">Ctrl</span> + <span class="keyboard-key">Alt</span> + <span class="keyboard-key">T</span></p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>Start Mkweli</h4>
+                    <p>Type this command and press Enter:</p>
+                    <div class="code-box">
+                        <code>cd ~/Mkweli && docker-compose up -d</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>Wait about 30 seconds</h4>
+                    <p>Then open your browser to <strong>http://localhost:8000</strong></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 8: Troubleshooting -->
+        <section id="troubleshooting">
+            <h2>8. Troubleshooting for Non-Technical Users</h2>
+            
+            <p>Having problems? Here are solutions to the most common issues:</p>
+            
+            <div class="troubleshoot-item">
+                <h4>❌ "Permission denied" when running Docker commands</h4>
+                <div class="solution">
+                    <strong>Solution:</strong>
+                    <ol>
+                        <li>Run this command in Terminal:</li>
+                        <li><code>sudo usermod -aG docker $USER</code></li>
+                        <li>Enter your password when asked</li>
+                        <li>Log out and log back in (click power icon → Log Out)</li>
+                        <li>Try again</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="troubleshoot-item">
+                <h4>❌ "Cannot connect to localhost:8000" in browser</h4>
+                <div class="solution">
+                    <strong>Solution:</strong>
+                    <ol>
+                        <li>Open Terminal and run: <code>docker ps</code></li>
+                        <li>If no containers are listed, run: <code>cd ~/Mkweli && docker-compose up -d</code></li>
+                        <li>Wait 30 seconds and try again</li>
+                        <li>Try using <code>http://127.0.0.1:8000</code> instead</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="troubleshoot-item">
+                <h4>❌ Installation failed or command not found</h4>
+                <div class="solution">
+                    <strong>Solution:</strong>
+                    <ol>
+                        <li>Make sure you have internet connection</li>
+                        <li>Try running: <code>sudo apt update && sudo apt install -y curl git</code></li>
+                        <li>Then try the installation command again</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="troubleshoot-item">
+                <h4>❌ I forgot my password</h4>
+                <div class="solution">
+                    <strong>Solution:</strong>
+                    <p>Contact support at <a href="mailto:gilbert@mkweli.tech">gilbert@mkweli.tech</a> for help resetting your password.</p>
+                </div>
+            </div>
+            
+            <div class="troubleshoot-item">
+                <h4>❌ "docker-compose: command not found"</h4>
+                <div class="solution">
+                    <strong>Solution:</strong>
+                    <p>Run this command to install docker-compose:</p>
+                    <div class="code-box">
+                        <code>sudo apt install docker-compose -y</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="troubleshoot-item">
+                <h4>❌ Computer is slow when running Mkweli</h4>
+                <div class="solution">
+                    <strong>Solution:</strong>
+                    <ul>
+                        <li>Close other applications you're not using</li>
+                        <li>Make sure you have at least 4GB RAM (8GB recommended)</li>
+                        <li>When not using Mkweli, stop it: <code>cd ~/Mkweli && docker-compose down</code></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="info-box info">
+                <span class="icon">🆘</span>
+                <div class="content">
+                    <strong>Still having problems?</strong><br>
+                    Contact support at <a href="mailto:gilbert@mkweli.tech">gilbert@mkweli.tech</a> with:
+                    <ul>
+                        <li>What you were trying to do</li>
+                        <li>Any error messages you see</li>
+                        <li>Your Ubuntu version (run <code>lsb_release -a</code> to find out)</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <div class="info-box success" style="margin-top: 2rem;">
+            <span class="icon">🎉</span>
+            <div class="content">
+                <strong>Congratulations!</strong><br>
+                You've completed the Mkweli AML setup on Ubuntu! For information on how to use the screening features, see the <a href="daily-usage.html">Daily Usage Guide</a>.
+            </div>
+        </div>
+        
+        <footer class="footer">
+            <p><strong>Mkweli AML</strong> - Free and Open Source Sanctions Screening</p>
+            <p><a href="https://mkweli.tech">mkweli.tech</a> | <a href="https://github.com/gilbertbouic/Mkweli">GitHub</a> | <a href="mailto:gilbert@mkweli.tech">Support</a></p>
+            <p style="margin-top: 1rem;"><a href="daily-usage.html">→ Continue to Daily Usage Guide</a></p>
+        </footer>
+    </div>
+</body>
+</html>

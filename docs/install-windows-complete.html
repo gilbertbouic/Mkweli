@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mkweli AML - Complete Windows Installation Guide</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary: #1e40af;
+            --primary-light: #3b82f6;
+            --accent: #059669;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #f9fafb;
+            --white: #ffffff;
+            --border: #e5e7eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.7;
+            color: var(--text);
+            background: var(--bg);
+            padding: 2rem;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            padding: 2rem 3rem;
+        }
+        h1 {
+            color: var(--primary);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .subtitle {
+            color: var(--text-light);
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+        h2 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin: 2.5rem 0 1rem;
+            padding-top: 1rem;
+            border-top: 2px solid var(--border);
+        }
+        h2:first-of-type {
+            border-top: none;
+            padding-top: 0;
+        }
+        h3 {
+            color: var(--text);
+            font-size: 1.2rem;
+            margin: 1.5rem 0 0.75rem;
+        }
+        p { margin-bottom: 1rem; }
+        
+        .toc {
+            background: var(--bg);
+            padding: 1.5rem 2rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+        }
+        .toc h3 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+        .toc ol {
+            margin: 1rem 0 0 1.5rem;
+        }
+        .toc li {
+            margin-bottom: 0.5rem;
+        }
+        .toc a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        
+        .step-card {
+            background: var(--bg);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+        .step-card.highlight {
+            background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+            border: 1px solid var(--primary-light);
+        }
+        
+        .numbered-step {
+            display: flex;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            align-items: flex-start;
+        }
+        .step-number {
+            background: var(--primary);
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .step-content {
+            flex: 1;
+        }
+        .step-content h4 {
+            margin: 0 0 0.5rem 0;
+            color: var(--text);
+        }
+        
+        ol, ul {
+            margin: 1rem 0 1rem 1.5rem;
+        }
+        li {
+            margin-bottom: 0.75rem;
+        }
+        
+        .info-box {
+            padding: 1rem 1.25rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            display: flex;
+            gap: 0.75rem;
+        }
+        .info-box.info {
+            background: #eff6ff;
+            border-left: 4px solid var(--primary);
+        }
+        .info-box.success {
+            background: #f0fdf4;
+            border-left: 4px solid var(--success);
+        }
+        .info-box.warning {
+            background: #fffbeb;
+            border-left: 4px solid var(--warning);
+        }
+        .info-box.danger {
+            background: #fef2f2;
+            border-left: 4px solid var(--danger);
+        }
+        .info-box .icon { font-size: 1.25rem; }
+        .info-box .content { flex: 1; }
+        
+        .keyboard-key {
+            background: #374151;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        
+        .screenshot-placeholder {
+            background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+            padding: 2rem;
+            border-radius: 8px;
+            text-align: center;
+            margin: 1rem 0;
+            border: 2px dashed var(--border);
+        }
+        .screenshot-placeholder .icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .screenshot-placeholder p {
+            margin: 0;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: var(--primary-light);
+        }
+        
+        .troubleshoot-item {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin: 1rem 0;
+        }
+        .troubleshoot-item h4 {
+            color: var(--danger);
+            margin-bottom: 0.5rem;
+        }
+        .troubleshoot-item .solution {
+            background: var(--white);
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin-top: 0.5rem;
+        }
+        .troubleshoot-item .solution strong {
+            color: var(--accent);
+        }
+        
+        .daily-step {
+            background: var(--white);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+        .daily-step h4 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+        
+        .warning-box {
+            background: #fef2f2;
+            border: 2px solid var(--danger);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .warning-box h4 {
+            color: var(--danger);
+            margin-bottom: 0.5rem;
+        }
+        
+        .footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid var(--border);
+            text-align: center;
+            color: var(--text-light);
+        }
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 640px) {
+            body { padding: 1rem; }
+            .container { padding: 1.5rem; }
+            h1 { font-size: 1.5rem; }
+            h2 { font-size: 1.25rem; }
+            .numbered-step { flex-direction: column; }
+        }
+        
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; }
+            .btn { border: 1px solid var(--text); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖥️ Complete Windows Installation Guide</h1>
+        <p class="subtitle">A step-by-step guide to install Mkweli AML on Windows. No technical knowledge required - we'll explain everything!</p>
+        
+        <!-- Table of Contents -->
+        <nav class="toc">
+            <h3>📋 What's in this guide</h3>
+            <ol>
+                <li><a href="#what-is-terminal">What is Terminal? (and how to open it)</a></li>
+                <li><a href="#download">Download the Installer</a></li>
+                <li><a href="#install">Install Mkweli AML</a></li>
+                <li><a href="#verify-docker">Verify Docker is Installed</a></li>
+                <li><a href="#first-launch">First Launch</a></li>
+                <li><a href="#change-password">Change Your Password</a></li>
+                <li><a href="#daily-workflow">Daily Workflow</a></li>
+                <li><a href="#next-day">Next-Day Restart</a></li>
+                <li><a href="#troubleshooting">Troubleshooting</a></li>
+            </ol>
+        </nav>
+        
+        <div class="info-box info">
+            <span class="icon">ℹ️</span>
+            <div class="content">
+                <strong>Before You Start</strong><br>
+                This guide assumes you have never installed software like this before. We'll explain everything step by step. Plan for about 30-45 minutes for the complete installation.
+            </div>
+        </div>
+
+        <!-- Section 1: What is Terminal -->
+        <section id="what-is-terminal">
+            <h2>1. What is Terminal? (and how to open it)</h2>
+            
+            <p>The <strong>Terminal</strong> (also called "Command Prompt" or "PowerShell" on Windows) is a program that lets you type commands to your computer instead of clicking buttons. Think of it like having a conversation with your computer using text.</p>
+            
+            <div class="info-box info">
+                <span class="icon">💡</span>
+                <div class="content">
+                    <strong>Good News!</strong><br>
+                    For Mkweli AML, you usually don't need to use the Terminal! The installer and desktop shortcuts do everything for you. But it's good to know where it is, just in case.
+                </div>
+            </div>
+            
+            <h3>How to Open Terminal on Windows</h3>
+            
+            <div class="numbered-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Click the Start button</h4>
+                    <p>Look at the bottom-left corner of your screen. You'll see the Windows logo (it looks like four squares). Click it.</p>
+                    <div class="screenshot-placeholder">
+                        <div class="icon">🖼️</div>
+                        <p>The Start button is at the bottom-left corner of your screen</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>Type "Terminal" or "cmd"</h4>
+                    <p>With the Start menu open, just start typing the word <strong>Terminal</strong> or <strong>cmd</strong>. You don't need to click anywhere first - just type. Windows will search as you type.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>Click to open</h4>
+                    <p>You'll see "Terminal" or "Command Prompt" appear in the search results. Click on it to open.</p>
+                    <div class="screenshot-placeholder">
+                        <div class="icon">🖼️</div>
+                        <p>A black or blue window will open - this is the Terminal</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-box success">
+                <span class="icon">✅</span>
+                <div class="content">
+                    <strong>Keyboard Shortcut</strong><br>
+                    You can also press <span class="keyboard-key">Windows</span> + <span class="keyboard-key">R</span>, type <strong>cmd</strong>, and press <span class="keyboard-key">Enter</span> to open the Terminal quickly.
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Download -->
+        <section id="download">
+            <h2>2. Download the Installer</h2>
+            
+            <div class="numbered-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Open your web browser</h4>
+                    <p>Click on your web browser (like Chrome, Edge, or Firefox). If you're reading this guide, you've already done this!</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>Go to the download page</h4>
+                    <p>Click the button below, or copy this address into your browser:</p>
+                    <a href="https://github.com/gilbertbouic/Mkweli/releases" class="btn btn-primary" target="_blank">
+                        ⬇️ Go to Download Page
+                    </a>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>Find the installer file</h4>
+                    <p>On the download page, look for a file named something like:</p>
+                    <p><strong>MkweliAML-Setup-1.0.0.exe</strong></p>
+                    <p>The numbers might be different (like 1.0.1 or 2.0.0) - that's okay, it's just the version number.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h4>Click to download</h4>
+                    <p>Click on the filename to download it. Your browser will download the file - this usually takes 1-2 minutes.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <h4>Find your downloaded file</h4>
+                    <p>The file is usually saved to your <strong>Downloads</strong> folder. You can find it by:</p>
+                    <ul>
+                        <li>Clicking the download icon in your browser (usually at the top or bottom)</li>
+                        <li>Opening File Explorer and clicking "Downloads" in the left panel</li>
+                        <li>Pressing <span class="keyboard-key">Windows</span> + <span class="keyboard-key">E</span> and clicking "Downloads"</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Install -->
+        <section id="install">
+            <h2>3. Install Mkweli AML</h2>
+            
+            <div class="numbered-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Double-click the installer</h4>
+                    <p>Find the file you just downloaded (MkweliAML-Setup-x.x.x.exe) and <strong>double-click</strong> on it.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>Allow Windows to run the installer</h4>
+                    <p>Windows might show a blue box asking "Do you want to allow this app to make changes to your device?"</p>
+                    <p>Click <strong>Yes</strong> to continue.</p>
+                    <div class="info-box info">
+                        <span class="icon">ℹ️</span>
+                        <div class="content">
+                            This is normal! Windows asks this for any new software you install. It's a security feature to make sure you know what you're installing.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>Click "Next" to start</h4>
+                    <p>The installer will open. Read the welcome message and click <strong>Next</strong>.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h4>Accept the license agreement</h4>
+                    <p>You'll see the license agreement (the rules for using the software). Click the checkbox that says "I accept the agreement" or similar, then click <strong>Next</strong>.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <h4>Choose where to install (optional)</h4>
+                    <p>The installer will suggest where to put the program (usually <code>C:\Program Files\Mkweli AML</code>). You can leave this as-is and click <strong>Next</strong>.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">6</div>
+                <div class="step-content">
+                    <h4>Click "Install"</h4>
+                    <p>Click the <strong>Install</strong> button. The installer will copy files to your computer. This takes 1-2 minutes.</p>
+                    <p>You'll see a progress bar showing how much is done.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">7</div>
+                <div class="step-content">
+                    <h4>Installation complete!</h4>
+                    <p>When finished, click <strong>Finish</strong>. You now have Mkweli AML installed!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Verify Docker -->
+        <section id="verify-docker">
+            <h2>4. Verify Docker is Installed</h2>
+            
+            <p><strong>Docker</strong> is a special program that Mkweli needs to run. Think of it like a special helper program that runs Mkweli safely in its own protected space.</p>
+            
+            <div class="info-box warning">
+                <span class="icon">⚠️</span>
+                <div class="content">
+                    <strong>Important</strong><br>
+                    If Docker is not installed, Mkweli won't work. The installer should have prompted you to install it. If it didn't, follow these steps.
+                </div>
+            </div>
+            
+            <h3>Check if Docker is installed</h3>
+            
+            <div class="numbered-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Look for Docker in your taskbar</h4>
+                    <p>Look at the bottom-right corner of your screen (near the clock). You might see a <strong>whale icon</strong> 🐳. That's Docker!</p>
+                    <p>If the whale is there and not moving (animated), Docker is running and ready.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>If you don't see the whale icon</h4>
+                    <p>Click the Start button and type <strong>Docker Desktop</strong>. If you see it in the results, click to open it. If you don't see it, you need to install Docker.</p>
+                </div>
+            </div>
+            
+            <h3>How to install Docker (if needed)</h3>
+            
+            <div class="numbered-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Go to Docker's website</h4>
+                    <a href="https://www.docker.com/products/docker-desktop/" class="btn btn-primary" target="_blank">
+                        ⬇️ Download Docker Desktop
+                    </a>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>Download Docker Desktop for Windows</h4>
+                    <p>Click the blue "Download for Windows" button on Docker's website.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>Run the Docker installer</h4>
+                    <p>Double-click the downloaded file and follow the installation steps (similar to how you installed Mkweli).</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h4>Restart your computer</h4>
+                    <p><strong>Important!</strong> After installing Docker, restart your computer. Click Start → Power → Restart.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <h4>Wait for Docker to start</h4>
+                    <p>After restarting, Docker Desktop will start automatically. Wait until the whale icon 🐳 in the taskbar stops moving (about 1-2 minutes).</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: First Launch -->
+        <section id="first-launch">
+            <h2>5. First Launch</h2>
+            
+            <div class="info-box success">
+                <span class="icon">🎉</span>
+                <div class="content">
+                    <strong>Almost there!</strong><br>
+                    Now we'll start Mkweli for the first time. This is the exciting part!
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Find the Mkweli shortcut on your desktop</h4>
+                    <p>After installation, you should see a <strong>Mkweli AML</strong> icon on your desktop (the main screen when you first turn on your computer).</p>
+                    <p>If you don't see it, click Start and type "Mkweli AML".</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>Double-click the Mkweli AML icon</h4>
+                    <p>Click twice quickly on the Mkweli AML icon. A menu window will appear.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>Select "1. Start Application"</h4>
+                    <p>You'll see a menu with several options. Type <strong>1</strong> and press <span class="keyboard-key">Enter</span>, or click on "Start Application".</p>
+                    <div class="screenshot-placeholder">
+                        <div class="icon">🖼️</div>
+                        <p>The launcher menu shows options like "Start Application", "Stop Application", etc.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h4>Wait for Mkweli to start</h4>
+                    <p>The first time you start Mkweli, it takes <strong>2-5 minutes</strong> to get ready. You'll see messages appearing in the window. This is normal!</p>
+                    <div class="info-box info">
+                        <span class="icon">⏳</span>
+                        <div class="content">
+                            <strong>Why does it take so long?</strong><br>
+                            On first launch, Mkweli downloads some additional files it needs and prepares the sanctions data (about 160MB of names to check against). Future starts will be much faster!
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <h4>Your browser opens automatically</h4>
+                    <p>When Mkweli is ready, your web browser (Chrome, Edge, Firefox) will open automatically to the login page.</p>
+                    <p>If it doesn't open, you can manually go to: <strong>http://localhost:8000</strong></p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">6</div>
+                <div class="step-content">
+                    <h4>Log in with the default password</h4>
+                    <p>On the login screen, enter:</p>
+                    <ul>
+                        <li><strong>Username:</strong> admin</li>
+                        <li><strong>Password:</strong> admin123</li>
+                    </ul>
+                    <p>Click <strong>Login</strong>.</p>
+                </div>
+            </div>
+            
+            <div class="info-box success">
+                <span class="icon">✅</span>
+                <div class="content">
+                    <strong>Success!</strong><br>
+                    You should now see the Mkweli AML dashboard. You're ready to start screening names!
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Change Password -->
+        <section id="change-password">
+            <h2>6. Change Your Password (Very Important!)</h2>
+            
+            <div class="warning-box">
+                <h4>⚠️ Security Warning</h4>
+                <p>The default password "admin123" is known to everyone. You must change it immediately to keep your data safe!</p>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Click the gear icon ⚙️</h4>
+                    <p>In the top-right corner of the Mkweli dashboard, you'll see a gear icon (⚙️) or your username. Click on it.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>Select "Change Password"</h4>
+                    <p>A dropdown menu will appear. Click on <strong>Change Password</strong>.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>Enter your current password</h4>
+                    <p>Type: <strong>admin123</strong></p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h4>Create a new password</h4>
+                    <p>Your new password must be:</p>
+                    <ul>
+                        <li>At least <strong>12 characters</strong> long</li>
+                        <li>Include at least one <strong>uppercase letter</strong> (A-Z)</li>
+                        <li>Include at least one <strong>number</strong> (0-9)</li>
+                        <li>Include at least one <strong>special character</strong> (!@#$%^&amp;*)</li>
+                    </ul>
+                    <p>Example of a good password: <strong>MySecure2024!</strong></p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <h4>Confirm your new password</h4>
+                    <p>Type your new password again to confirm it's correct.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">6</div>
+                <div class="step-content">
+                    <h4>Click "Save" or "Change Password"</h4>
+                    <p>Click the button to save your new password. You may be asked to log in again with your new password.</p>
+                </div>
+            </div>
+            
+            <div class="info-box warning">
+                <span class="icon">📝</span>
+                <div class="content">
+                    <strong>Write it down!</strong><br>
+                    Write your new password on paper and keep it in a safe place. If you forget your password, you may need to reinstall the application.
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 7: Daily Workflow -->
+        <section id="daily-workflow">
+            <h2>7. Daily Workflow</h2>
+            
+            <p>Here's how to use Mkweli AML on a typical day:</p>
+            
+            <div class="daily-step">
+                <h4>🌅 Morning: Start the App</h4>
+                <ol>
+                    <li>Make sure your computer is turned on and you're logged in</li>
+                    <li>Wait for Docker to start (look for the whale icon 🐳 in the taskbar)</li>
+                    <li>Double-click the <strong>Mkweli AML</strong> shortcut on your desktop</li>
+                    <li>Select <strong>"1. Start Application"</strong></li>
+                    <li>Wait about 30 seconds for the app to start</li>
+                    <li>Your browser will open - log in with your password</li>
+                </ol>
+            </div>
+            
+            <div class="daily-step">
+                <h4>☀️ During the Day: Use the App</h4>
+                <ol>
+                    <li>Use the dashboard to screen names</li>
+                    <li>For single names: Use "Quick Check"</li>
+                    <li>For many names: Use "Upload List" with a CSV or Excel file</li>
+                    <li>Download and save any reports you generate</li>
+                    <li>You can leave Mkweli running all day - it's designed for that!</li>
+                </ol>
+            </div>
+            
+            <div class="daily-step">
+                <h4>🌙 Evening: Close the App</h4>
+                <ol>
+                    <li>Save any work you haven't saved yet</li>
+                    <li>Double-click the <strong>Mkweli AML</strong> shortcut</li>
+                    <li>Select <strong>"2. Stop Application"</strong></li>
+                    <li>Wait for the confirmation message</li>
+                    <li>You can now shut down your computer safely</li>
+                </ol>
+            </div>
+            
+            <div class="info-box info">
+                <span class="icon">💡</span>
+                <div class="content">
+                    <strong>Tip: Leave it running!</strong><br>
+                    If you use Mkweli frequently, you can leave it running all day. Just close your browser - the app will still be running when you come back.
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 8: Next-Day Restart -->
+        <section id="next-day">
+            <h2>8. Next-Day Restart Procedure</h2>
+            
+            <p>When you come back the next day, here's how to start using Mkweli again:</p>
+            
+            <div class="numbered-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Turn on your computer and log in</h4>
+                    <p>Wait for Windows to fully load.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>Wait for Docker to start</h4>
+                    <p>Docker usually starts automatically. Look for the whale icon 🐳 in the bottom-right corner. Wait until it stops moving/animating.</p>
+                    <p><strong>If you don't see the whale:</strong> Click Start, type "Docker Desktop", and click to open it.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>Start Mkweli AML</h4>
+                    <p>Double-click the <strong>Mkweli AML</strong> shortcut on your desktop.</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h4>Select "Start Application"</h4>
+                    <p>Choose option 1 from the menu. The app will start in about 30 seconds (much faster than the first time!).</p>
+                </div>
+            </div>
+            
+            <div class="numbered-step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <h4>Log in and continue working</h4>
+                    <p>Your browser will open. Log in with your password and you're ready to go!</p>
+                </div>
+            </div>
+            
+            <div class="info-box success">
+                <span class="icon">⚡</span>
+                <div class="content">
+                    <strong>Quick restart?</strong><br>
+                    If Mkweli is already running from yesterday, just open your browser and go to <strong>http://localhost:8000</strong>. You don't need to restart anything!
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 9: Troubleshooting -->
+        <section id="troubleshooting">
+            <h2>9. Troubleshooting for Non-Technical Users</h2>
+            
+            <p>Having problems? Here are solutions to the most common issues:</p>
+            
+            <div class="troubleshoot-item">
+                <h4>❌ "Docker is not running" error</h4>
+                <div class="solution">
+                    <strong>Solution:</strong>
+                    <ol>
+                        <li>Look at the bottom-right corner of your screen for the whale icon 🐳</li>
+                        <li>If you don't see it, click Start and type "Docker Desktop"</li>
+                        <li>Click to open Docker Desktop</li>
+                        <li>Wait 1-2 minutes for the whale to stop moving</li>
+                        <li>Try starting Mkweli again</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="troubleshoot-item">
+                <h4>❌ The app won't start or takes forever</h4>
+                <div class="solution">
+                    <strong>Solution:</strong>
+                    <ol>
+                        <li>The first start can take 5 minutes - be patient!</li>
+                        <li>Make sure Docker is running (whale icon in taskbar)</li>
+                        <li>Try selecting "Restart Application" from the launcher menu</li>
+                        <li>If still not working, restart your computer and try again</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="troubleshoot-item">
+                <h4>❌ "Cannot connect to localhost:8000" in browser</h4>
+                <div class="solution">
+                    <strong>Solution:</strong>
+                    <ol>
+                        <li>Wait 30 more seconds - the app might still be starting</li>
+                        <li>Try typing <strong>http://127.0.0.1:8000</strong> instead</li>
+                        <li>Make sure you selected "Start Application" first</li>
+                        <li>Try selecting "Check Status" from the launcher to see if the app is running</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="troubleshoot-item">
+                <h4>❌ I forgot my password</h4>
+                <div class="solution">
+                    <strong>Solution:</strong>
+                    <p>Unfortunately, you may need to reinstall the application if you forgot your password. Contact support at <a href="mailto:gilbert@mkweli.tech">gilbert@mkweli.tech</a> for help.</p>
+                </div>
+            </div>
+            
+            <div class="troubleshoot-item">
+                <h4>❌ My computer is very slow when running Mkweli</h4>
+                <div class="solution">
+                    <strong>Solution:</strong>
+                    <ol>
+                        <li>Close other programs you're not using</li>
+                        <li>Make sure your computer has at least 4GB of RAM (8GB recommended)</li>
+                        <li>When not using Mkweli, select "Stop Application" to free up resources</li>
+                        <li>Consider closing Docker Desktop when you're done for the day</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="troubleshoot-item">
+                <h4>❌ Browser shows a blank page</h4>
+                <div class="solution">
+                    <strong>Solution:</strong>
+                    <ol>
+                        <li>Press <span class="keyboard-key">F5</span> to refresh the page</li>
+                        <li>Clear your browser's cache (press <span class="keyboard-key">Ctrl</span> + <span class="keyboard-key">Shift</span> + <span class="keyboard-key">Delete</span>)</li>
+                        <li>Try a different browser (Edge, Chrome, Firefox)</li>
+                        <li>Restart the application using the launcher</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="troubleshoot-item">
+                <h4>❌ "Permission denied" or "Access denied" error</h4>
+                <div class="solution">
+                    <strong>Solution:</strong>
+                    <ol>
+                        <li>Right-click on the Mkweli AML shortcut</li>
+                        <li>Select "Run as administrator"</li>
+                        <li>Click "Yes" when Windows asks for permission</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="info-box info">
+                <span class="icon">🆘</span>
+                <div class="content">
+                    <strong>Still having problems?</strong><br>
+                    Contact support at <a href="mailto:gilbert@mkweli.tech">gilbert@mkweli.tech</a> with:
+                    <ul>
+                        <li>What you were trying to do</li>
+                        <li>What error message you see</li>
+                        <li>Your Windows version (Windows 10 or 11)</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <div class="info-box success" style="margin-top: 2rem;">
+            <span class="icon">🎉</span>
+            <div class="content">
+                <strong>Congratulations!</strong><br>
+                You've completed the Mkweli AML setup! For information on how to use the screening features, see the in-app help or the <a href="daily-usage.html">Daily Usage Guide</a>.
+            </div>
+        </div>
+        
+        <footer class="footer">
+            <p><strong>Mkweli AML</strong> - Free and Open Source Sanctions Screening</p>
+            <p><a href="https://mkweli.tech">mkweli.tech</a> | <a href="https://github.com/gilbertbouic/Mkweli">GitHub</a> | <a href="mailto:gilbert@mkweli.tech">Support</a></p>
+            <p style="margin-top: 1rem;"><a href="daily-usage.html">→ Continue to Daily Usage Guide</a></p>
+        </footer>
+    </div>
+</body>
+</html>

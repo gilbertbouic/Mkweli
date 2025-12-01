@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mkweli AML - Windows Quick Start (Updated)</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary: #1e40af;
+            --primary-light: #3b82f6;
+            --accent: #059669;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #f9fafb;
+            --white: #ffffff;
+            --border: #e5e7eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+            padding: 2rem;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            padding: 2rem 3rem;
+        }
+        h1 {
+            color: var(--primary);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .subtitle {
+            color: var(--text-light);
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+        h2 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        h2 .step-number {
+            background: var(--primary);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+        h3 {
+            color: var(--text);
+            font-size: 1.1rem;
+            margin: 1.5rem 0 0.75rem;
+        }
+        p { margin-bottom: 1rem; }
+        
+        .requirements {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        .requirement-card {
+            background: var(--bg);
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+        }
+        .requirement-card h4 {
+            color: var(--primary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+        }
+        .requirement-card .value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+        
+        .step-card {
+            background: var(--bg);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+        .step-card.highlight {
+            background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+            border: 1px solid var(--primary-light);
+        }
+        
+        ol, ul {
+            margin: 1rem 0 1rem 1.5rem;
+        }
+        li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: var(--primary-light);
+        }
+        .btn-success {
+            background: var(--accent);
+            color: white;
+        }
+        .btn-success:hover {
+            background: var(--success);
+        }
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+        .btn-outline:hover {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .info-box {
+            padding: 1rem 1.25rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            display: flex;
+            gap: 0.75rem;
+        }
+        .info-box.info {
+            background: #eff6ff;
+            border-left: 4px solid var(--primary);
+        }
+        .info-box.success {
+            background: #f0fdf4;
+            border-left: 4px solid var(--success);
+        }
+        .info-box.warning {
+            background: #fffbeb;
+            border-left: 4px solid var(--warning);
+        }
+        .info-box.danger {
+            background: #fef2f2;
+            border-left: 4px solid var(--danger);
+        }
+        .info-box .icon { font-size: 1.25rem; }
+        .info-box .content { flex: 1; }
+        
+        .shortcut-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        .shortcut-card {
+            background: var(--white);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 1.25rem;
+            transition: all 0.2s;
+        }
+        .shortcut-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .shortcut-card h4 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .shortcut-card p {
+            margin: 0;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .launcher-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        .launcher-table th, .launcher-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .launcher-table th {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+        .launcher-table tr:hover {
+            background: var(--bg);
+        }
+        .launcher-table .option {
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        .faq-item {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin: 1rem 0;
+        }
+        .faq-item h4 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        .faq-item p {
+            margin: 0;
+            color: var(--text-light);
+        }
+        
+        .guide-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        .guide-link {
+            background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-decoration: none;
+            color: var(--text);
+            transition: all 0.2s;
+        }
+        .guide-link:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .guide-link h4 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .guide-link p {
+            margin: 0;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid var(--border);
+            text-align: center;
+            color: var(--text-light);
+        }
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 640px) {
+            body { padding: 1rem; }
+            .container { padding: 1.5rem; }
+            h1 { font-size: 1.5rem; }
+            h2 { font-size: 1.25rem; }
+        }
+        
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; }
+            .btn { border: 1px solid var(--text); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖥️ Windows Quick Start Guide</h1>
+        <p class="subtitle">Get Mkweli AML running on Windows in just a few minutes - no technical knowledge required!</p>
+        
+        <!-- More Guides Banner -->
+        <div class="info-box info">
+            <span class="icon">📚</span>
+            <div class="content">
+                <strong>Need More Help?</strong><br>
+                This is a quick overview. For detailed step-by-step instructions, see the <a href="install-windows-complete.html">Complete Windows Installation Guide</a>.
+            </div>
+        </div>
+        
+        <!-- Requirements -->
+        <section>
+            <h2>📋 What You Need</h2>
+            <div class="requirements">
+                <div class="requirement-card">
+                    <h4>Windows</h4>
+                    <div class="value">10 or 11 (64-bit)</div>
+                </div>
+                <div class="requirement-card">
+                    <h4>RAM</h4>
+                    <div class="value">4 GB minimum</div>
+                </div>
+                <div class="requirement-card">
+                    <h4>Disk Space</h4>
+                    <div class="value">5 GB free</div>
+                </div>
+                <div class="requirement-card">
+                    <h4>Internet</h4>
+                    <div class="value">For setup only</div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Step 1 -->
+        <section>
+            <h2><span class="step-number">1</span> Download the Installer</h2>
+            <div class="step-card">
+                <p>Download the latest Mkweli AML installer from our releases page:</p>
+                <a href="https://github.com/gilbertbouic/Mkweli/releases" class="btn btn-primary" target="_blank">
+                    ⬇️ Download Installer
+                </a>
+                <p style="margin-top: 1rem; color: var(--text-light);">
+                    Look for the file named <strong>MkweliAML-Setup-x.x.x.exe</strong>
+                </p>
+            </div>
+        </section>
+        
+        <!-- Step 2 -->
+        <section>
+            <h2><span class="step-number">2</span> Run the Installer</h2>
+            <div class="step-card">
+                <ol>
+                    <li><strong>Double-click</strong> the downloaded installer file</li>
+                    <li>If Windows asks permission, click <strong>Yes</strong></li>
+                    <li>Click <strong>Next</strong> to proceed through the wizard</li>
+                    <li>Accept the license agreement</li>
+                    <li>Click <strong>Install</strong> and wait for completion</li>
+                </ol>
+            </div>
+            
+            <div class="info-box info">
+                <span class="icon">ℹ️</span>
+                <div class="content">
+                    <strong>Docker Desktop Required</strong><br>
+                    If Docker Desktop is not installed, the installer will prompt you to download it. This is a free program required to run Mkweli AML securely.
+                </div>
+            </div>
+        </section>
+        
+        <!-- Step 3 -->
+        <section>
+            <h2><span class="step-number">3</span> Launch Mkweli AML</h2>
+            <div class="step-card highlight">
+                <p>After installation, you'll find a <strong>Mkweli AML</strong> shortcut on your desktop.</p>
+                <ol>
+                    <li><strong>Double-click</strong> the desktop shortcut</li>
+                    <li>A menu appears - select <strong>"1. Start Application"</strong></li>
+                    <li>Wait about 30 seconds (longer on first run)</li>
+                    <li>Your browser opens automatically to the dashboard!</li>
+                </ol>
+            </div>
+        </section>
+        
+        <!-- Step 4 -->
+        <section>
+            <h2><span class="step-number">4</span> First Login</h2>
+            <div class="step-card">
+                <ol>
+                    <li>Enter the default password: <strong>admin123</strong></li>
+                    <li>Click the ⚙️ gear icon in the top menu</li>
+                    <li>Select <strong>Change Password</strong></li>
+                    <li>Create a new strong password (12+ characters)</li>
+                </ol>
+            </div>
+            
+            <div class="info-box warning">
+                <span class="icon">⚠️</span>
+                <div class="content">
+                    <strong>Security Reminder</strong><br>
+                    Always change the default password immediately after first login!
+                </div>
+            </div>
+        </section>
+        
+        <!-- Desktop Shortcuts -->
+        <section>
+            <h2>🎮 Desktop Shortcuts Reference</h2>
+            <p>After installation, you'll have these shortcuts available:</p>
+            
+            <div class="shortcut-grid">
+                <div class="shortcut-card">
+                    <h4>🖥️ Mkweli AML</h4>
+                    <p>Main launcher - opens the menu to start, stop, or restart the application</p>
+                </div>
+            </div>
+            
+            <h3>Launcher Menu Options</h3>
+            <table class="launcher-table">
+                <thead>
+                    <tr>
+                        <th>Option</th>
+                        <th>What It Does</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="option">1. Start Application</td>
+                        <td>Starts Mkweli and opens your browser</td>
+                    </tr>
+                    <tr>
+                        <td class="option">2. Stop Application</td>
+                        <td>Stops Mkweli (saves resources)</td>
+                    </tr>
+                    <tr>
+                        <td class="option">3. Restart Application</td>
+                        <td>Restarts Mkweli (fixes most issues)</td>
+                    </tr>
+                    <tr>
+                        <td class="option">4. Open Dashboard</td>
+                        <td>Opens the web interface in your browser</td>
+                    </tr>
+                    <tr>
+                        <td class="option">5. View Logs</td>
+                        <td>Shows recent activity (for troubleshooting)</td>
+                    </tr>
+                    <tr>
+                        <td class="option">6. Check Status</td>
+                        <td>Shows if everything is running correctly</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+        
+        <!-- Related Guides -->
+        <section>
+            <h2>📖 Related Guides</h2>
+            <div class="guide-links">
+                <a href="daily-usage.html" class="guide-link">
+                    <h4>📅 Daily Usage Guide</h4>
+                    <p>Learn how to use Mkweli throughout your workday - morning startup, screening names, and evening shutdown.</p>
+                </a>
+                <a href="setup-verification.html" class="guide-link">
+                    <h4>✅ Setup Verification Checklist</h4>
+                    <p>Verify your installation is working correctly with our step-by-step checklist.</p>
+                </a>
+                <a href="install-windows-complete.html" class="guide-link">
+                    <h4>📘 Complete Windows Guide</h4>
+                    <p>Detailed step-by-step installation instructions with screenshots and troubleshooting.</p>
+                </a>
+            </div>
+        </section>
+        
+        <!-- Common Questions -->
+        <section>
+            <h2>❓ Common Questions</h2>
+            
+            <div class="faq-item">
+                <h4>What is Docker and why do I need it?</h4>
+                <p>Docker is a program that runs Mkweli in a safe, isolated environment. Think of it like a special container that keeps Mkweli separate from other programs on your computer. It's free and required for Mkweli to work.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h4>Can I use Mkweli without internet?</h4>
+                <p>Yes! After the initial installation, Mkweli works completely offline. You only need internet to update the sanctions data files.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h4>How do I know if it's working?</h4>
+                <p>When you see the login page at http://localhost:8000 in your browser, everything is working. You can also use "Check Status" from the launcher menu.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h4>What if my computer is slow?</h4>
+                <p>Mkweli needs at least 4GB of RAM to run well. If your computer is slow, try closing other programs while using Mkweli, or use "Stop Application" when you're done.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h4>How do I update the sanctions data?</h4>
+                <p>The application will remind you when data is older than 14 days. Follow the prompts in the app, or see our detailed guide for manual updates.</p>
+            </div>
+            
+            <div class="faq-item">
+                <h4>What if something goes wrong?</h4>
+                <p>Try "Restart Application" from the launcher menu - this fixes most issues. For persistent problems, check the <a href="setup-verification.html">Setup Verification Checklist</a>.</p>
+            </div>
+        </section>
+        
+        <!-- Help -->
+        <section>
+            <h2>🛟 Need Help?</h2>
+            <div class="step-card">
+                <p>We're here to help! Contact us through:</p>
+                <a href="mailto:gilbert@mkweli.tech" class="btn btn-outline">
+                    ✉️ Email Support
+                </a>
+                <a href="https://github.com/gilbertbouic/Mkweli/issues" class="btn btn-outline" target="_blank">
+                    🐛 Report an Issue
+                </a>
+            </div>
+        </section>
+        
+        <div class="info-box success">
+            <span class="icon">✅</span>
+            <div class="content">
+                <strong>You're all set!</strong><br>
+                Mkweli AML is now ready for sanctions screening. For detailed instructions on daily use, see the <a href="daily-usage.html">Daily Usage Guide</a>.
+            </div>
+        </div>
+        
+        <footer class="footer">
+            <p><strong>Mkweli AML</strong> - Free and Open Source Sanctions Screening</p>
+            <p><a href="https://mkweli.tech">mkweli.tech</a> | <a href="https://github.com/gilbertbouic/Mkweli">GitHub</a></p>
+        </footer>
+    </div>
+</body>
+</html>
