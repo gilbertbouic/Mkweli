@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mkweli AML - Setup Verification Checklist</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary: #1e40af;
+            --primary-light: #3b82f6;
+            --accent: #059669;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #f9fafb;
+            --white: #ffffff;
+            --border: #e5e7eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.7;
+            color: var(--text);
+            background: var(--bg);
+            padding: 2rem;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            padding: 2rem 3rem;
+        }
+        h1 {
+            color: var(--primary);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: var(--text-light);
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+        h2 {
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin: 2.5rem 0 1rem;
+            padding-top: 1rem;
+            border-top: 2px solid var(--border);
+        }
+        h2:first-of-type {
+            border-top: none;
+            padding-top: 0;
+        }
+        h3 {
+            color: var(--text);
+            font-size: 1.2rem;
+            margin: 1.5rem 0 0.75rem;
+        }
+        p { margin-bottom: 1rem; }
+        
+        ol, ul {
+            margin: 1rem 0 1rem 1.5rem;
+        }
+        li {
+            margin-bottom: 0.75rem;
+        }
+        
+        .checklist {
+            background: var(--bg);
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            margin: 1.5rem 0;
+        }
+        .checklist h3 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+        .check-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--white);
+            border-radius: 8px;
+            margin: 0.75rem 0;
+            transition: all 0.2s;
+        }
+        .check-item:hover {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .check-item input[type="checkbox"] {
+            width: 24px;
+            height: 24px;
+            margin-top: 2px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .check-item.checked {
+            background: #f0fdf4;
+            border-left: 4px solid var(--success);
+        }
+        .check-content h4 {
+            margin: 0 0 0.25rem 0;
+            color: var(--text);
+        }
+        .check-content p {
+            margin: 0;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .status-ok {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .code-box {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin: 0.5rem 0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+        
+        .info-box {
+            padding: 1rem 1.25rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            display: flex;
+            gap: 0.75rem;
+        }
+        .info-box.info {
+            background: #eff6ff;
+            border-left: 4px solid var(--primary);
+        }
+        .info-box.success {
+            background: #f0fdf4;
+            border-left: 4px solid var(--success);
+        }
+        .info-box.warning {
+            background: #fffbeb;
+            border-left: 4px solid var(--warning);
+        }
+        .info-box.danger {
+            background: #fef2f2;
+            border-left: 4px solid var(--danger);
+        }
+        .info-box .icon { font-size: 1.25rem; }
+        .info-box .content { flex: 1; }
+        
+        .troubleshoot-card {
+            background: var(--white);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            margin: 1.5rem 0;
+            overflow: hidden;
+        }
+        .troubleshoot-header {
+            background: #fef2f2;
+            padding: 1rem 1.5rem;
+            border-bottom: 2px solid var(--danger);
+            cursor: pointer;
+        }
+        .troubleshoot-header h4 {
+            color: var(--danger);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .troubleshoot-body {
+            padding: 1.5rem;
+        }
+        .troubleshoot-body h5 {
+            color: var(--accent);
+            margin: 0 0 0.5rem 0;
+        }
+        .fix-steps {
+            background: var(--bg);
+            padding: 1rem 1.25rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+        .fix-steps ol {
+            margin: 0.5rem 0 0 1.25rem;
+        }
+        
+        .keyboard-key {
+            background: #374151;
+            color: white;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+        
+        .os-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+        .os-tab {
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            background: var(--white);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .os-tab:hover {
+            border-color: var(--primary);
+        }
+        .os-tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .os-content {
+            display: none;
+        }
+        .os-content.active {
+            display: block;
+        }
+        
+        .emergency-box {
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+            border: 2px solid var(--danger);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .emergency-box h3 {
+            color: var(--danger);
+            margin-top: 0;
+        }
+        
+        .footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid var(--border);
+            text-align: center;
+            color: var(--text-light);
+        }
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 640px) {
+            body { padding: 1rem; }
+            .container { padding: 1.5rem; }
+            h1 { font-size: 1.5rem; }
+            h2 { font-size: 1.25rem; }
+            .os-tabs { flex-wrap: wrap; }
+        }
+        
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; }
+            .check-item input[type="checkbox"] { -webkit-appearance: none; border: 2px solid #000; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✅ Setup Verification Checklist</h1>
+        <p class="subtitle">Use this checklist to verify your Mkweli AML installation is working correctly, and troubleshoot common problems.</p>
+        
+        <div class="info-box info">
+            <span class="icon">📋</span>
+            <div class="content">
+                <strong>How to Use This Checklist</strong><br>
+                Go through each item in order. Check the box when each step passes. If something fails, see the troubleshooting section for that issue.
+            </div>
+        </div>
+        
+        <!-- OS Selection -->
+        <div class="os-tabs">
+            <button class="os-tab active" onclick="switchOS('windows')">🪟 Windows</button>
+            <button class="os-tab" onclick="switchOS('ubuntu')">🐧 Ubuntu</button>
+        </div>
+
+        <!-- Verification Checklist -->
+        <h2>🔍 Installation Verification</h2>
+        
+        <div class="checklist">
+            <h3>Step 1: Docker is Running</h3>
+            
+            <div class="os-content windows active">
+                <div class="check-item" onclick="toggleCheck(this)">
+                    <input type="checkbox">
+                    <div class="check-content">
+                        <h4>Docker Desktop is installed</h4>
+                        <p>Click Start, type "Docker Desktop". You should see it in the search results.</p>
+                    </div>
+                </div>
+                
+                <div class="check-item" onclick="toggleCheck(this)">
+                    <input type="checkbox">
+                    <div class="check-content">
+                        <h4>Docker is running</h4>
+                        <p>Look for the whale icon 🐳 in the bottom-right corner of your screen (near the clock). It should not be animating.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="os-content ubuntu">
+                <div class="check-item" onclick="toggleCheck(this)">
+                    <input type="checkbox">
+                    <div class="check-content">
+                        <h4>Docker is installed</h4>
+                        <p>Open Terminal and run: <code>docker --version</code>. You should see a version number.</p>
+                    </div>
+                </div>
+                
+                <div class="check-item" onclick="toggleCheck(this)">
+                    <input type="checkbox">
+                    <div class="check-content">
+                        <h4>Docker is running</h4>
+                        <p>Run: <code>docker ps</code>. If you get an error about "Cannot connect", Docker is not running.</p>
+                    </div>
+                </div>
+                
+                <div class="check-item" onclick="toggleCheck(this)">
+                    <input type="checkbox">
+                    <div class="check-content">
+                        <h4>docker-compose is installed</h4>
+                        <p>Run: <code>docker-compose --version</code>. You should see a version number.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="checklist">
+            <h3>Step 2: Mkweli Container is Running</h3>
+            
+            <div class="os-content windows active">
+                <div class="check-item" onclick="toggleCheck(this)">
+                    <input type="checkbox">
+                    <div class="check-content">
+                        <h4>Mkweli is started</h4>
+                        <p>Double-click the Mkweli AML shortcut and select "Check Status". You should see "running" or "healthy".</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="os-content ubuntu">
+                <div class="check-item" onclick="toggleCheck(this)">
+                    <input type="checkbox">
+                    <div class="check-content">
+                        <h4>Mkweli container is running</h4>
+                        <p>Run: <code>docker ps</code>. You should see a container with "mkweli" in the name.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="checklist">
+            <h3>Step 3: Web Interface is Accessible</h3>
+            
+            <div class="check-item" onclick="toggleCheck(this)">
+                <input type="checkbox">
+                <div class="check-content">
+                    <h4>Login page loads</h4>
+                    <p>Open your browser and go to <strong>http://localhost:8000</strong>. You should see the Mkweli login page.</p>
+                </div>
+            </div>
+            
+            <div class="check-item" onclick="toggleCheck(this)">
+                <input type="checkbox">
+                <div class="check-content">
+                    <h4>Can log in successfully</h4>
+                    <p>Enter your username and password. Click Login. You should see the dashboard.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="checklist">
+            <h3>Step 4: Features Work Correctly</h3>
+            
+            <div class="check-item" onclick="toggleCheck(this)">
+                <input type="checkbox">
+                <div class="check-content">
+                    <h4>Quick Check works</h4>
+                    <p>Try screening a test name like "John Smith". You should get results (even if no matches).</p>
+                </div>
+            </div>
+            
+            <div class="check-item" onclick="toggleCheck(this)">
+                <input type="checkbox">
+                <div class="check-content">
+                    <h4>Sanctions data is loaded</h4>
+                    <p>Check the dashboard - it should show the number of entries loaded from each sanctions list (UN, UK, OFAC, EU).</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-box success">
+            <span class="icon">🎉</span>
+            <div class="content">
+                <strong>All Checks Passed?</strong><br>
+                Congratulations! Your Mkweli AML installation is working correctly. You're ready to start screening!
+            </div>
+        </div>
+
+        <!-- Troubleshooting Section -->
+        <h2>🔧 Troubleshooting Guide</h2>
+        
+        <p>If any of the checks above failed, find your problem below and follow the fix.</p>
+        
+        <div class="troubleshoot-card">
+            <div class="troubleshoot-header">
+                <h4>❌ Docker is not installed</h4>
+            </div>
+            <div class="troubleshoot-body">
+                <h5>What this means:</h5>
+                <p>Docker is a required program that Mkweli needs to run. Without it, Mkweli won't work.</p>
+                
+                <div class="fix-steps">
+                    <h5>How to fix (Windows):</h5>
+                    <ol>
+                        <li>Go to <a href="https://www.docker.com/products/docker-desktop/" target="_blank">docker.com/products/docker-desktop</a></li>
+                        <li>Click "Download for Windows"</li>
+                        <li>Run the downloaded installer</li>
+                        <li>Follow the installation steps</li>
+                        <li><strong>Restart your computer</strong></li>
+                        <li>Open Docker Desktop from the Start menu</li>
+                        <li>Wait for it to finish starting (whale icon stops animating)</li>
+                    </ol>
+                </div>
+                
+                <div class="fix-steps">
+                    <h5>How to fix (Ubuntu):</h5>
+                    <ol>
+                        <li>Open Terminal (<span class="keyboard-key">Ctrl</span>+<span class="keyboard-key">Alt</span>+<span class="keyboard-key">T</span>)</li>
+                        <li>Run: <code>sudo apt update && sudo apt install -y docker.io docker-compose</code></li>
+                        <li>Enter your password when asked</li>
+                        <li>Run: <code>sudo usermod -aG docker $USER</code></li>
+                        <li>Log out and log back in</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        
+        <div class="troubleshoot-card">
+            <div class="troubleshoot-header">
+                <h4>❌ Docker is not running</h4>
+            </div>
+            <div class="troubleshoot-body">
+                <h5>What this means:</h5>
+                <p>Docker is installed but not started. Mkweli needs Docker to be running.</p>
+                
+                <div class="fix-steps">
+                    <h5>How to fix (Windows):</h5>
+                    <ol>
+                        <li>Click the Start button</li>
+                        <li>Type "Docker Desktop"</li>
+                        <li>Click to open it</li>
+                        <li>Wait 1-2 minutes for the whale icon to appear and stop moving</li>
+                    </ol>
+                </div>
+                
+                <div class="fix-steps">
+                    <h5>How to fix (Ubuntu):</h5>
+                    <ol>
+                        <li>Open Terminal</li>
+                        <li>Run: <code>sudo systemctl start docker</code></li>
+                        <li>Check it's running: <code>docker ps</code></li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        
+        <div class="troubleshoot-card">
+            <div class="troubleshoot-header">
+                <h4>❌ Cannot connect to localhost:8000</h4>
+            </div>
+            <div class="troubleshoot-body">
+                <h5>What this means:</h5>
+                <p>The browser can't reach Mkweli. Either it's not running, or something is blocking the connection.</p>
+                
+                <div class="fix-steps">
+                    <h5>Things to try:</h5>
+                    <ol>
+                        <li><strong>Wait longer</strong> - First startup can take 2-5 minutes. Be patient!</li>
+                        <li><strong>Try alternative address</strong> - Instead of localhost:8000, try <strong>http://127.0.0.1:8000</strong></li>
+                        <li><strong>Check if Mkweli is running</strong>:
+                            <ul>
+                                <li>Windows: Use "Check Status" from the launcher</li>
+                                <li>Ubuntu: Run <code>docker ps</code></li>
+                            </ul>
+                        </li>
+                        <li><strong>Restart Mkweli</strong>:
+                            <ul>
+                                <li>Windows: Use "Restart Application" from launcher</li>
+                                <li>Ubuntu: <code>cd ~/Mkweli && docker-compose restart</code></li>
+                            </ul>
+                        </li>
+                        <li><strong>Check firewall</strong> - Make sure your firewall isn't blocking port 8000</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        
+        <div class="troubleshoot-card">
+            <div class="troubleshoot-header">
+                <h4>❌ "Permission denied" error (Ubuntu)</h4>
+            </div>
+            <div class="troubleshoot-body">
+                <h5>What this means:</h5>
+                <p>Your user account doesn't have permission to use Docker.</p>
+                
+                <div class="fix-steps">
+                    <h5>How to fix:</h5>
+                    <ol>
+                        <li>Open Terminal</li>
+                        <li>Run: <code>sudo usermod -aG docker $USER</code></li>
+                        <li>Enter your password</li>
+                        <li><strong>Log out completely</strong> (click power icon → Log Out)</li>
+                        <li>Log back in</li>
+                        <li>Try your command again</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        
+        <div class="troubleshoot-card">
+            <div class="troubleshoot-header">
+                <h4>❌ Login fails with correct password</h4>
+            </div>
+            <div class="troubleshoot-body">
+                <h5>What this means:</h5>
+                <p>The password might have been changed, or there's a browser issue.</p>
+                
+                <div class="fix-steps">
+                    <h5>Things to try:</h5>
+                    <ol>
+                        <li><strong>Clear browser cache</strong> - Press <span class="keyboard-key">Ctrl</span>+<span class="keyboard-key">Shift</span>+<span class="keyboard-key">Delete</span></li>
+                        <li><strong>Try a different browser</strong> - Try Chrome, Firefox, or Edge</li>
+                        <li><strong>Check caps lock</strong> - Make sure caps lock is off</li>
+                        <li><strong>Use default password</strong> - If you haven't changed it, try: <strong>admin123</strong></li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        
+        <div class="troubleshoot-card">
+            <div class="troubleshoot-header">
+                <h4>❌ Application is very slow</h4>
+            </div>
+            <div class="troubleshoot-body">
+                <h5>What this means:</h5>
+                <p>Your computer may not have enough resources, or Docker needs more memory.</p>
+                
+                <div class="fix-steps">
+                    <h5>Things to try:</h5>
+                    <ol>
+                        <li><strong>Close other programs</strong> - Free up memory by closing unused applications</li>
+                        <li><strong>Check RAM</strong> - You need at least 4GB RAM (8GB recommended)</li>
+                        <li><strong>Restart Docker</strong> - Sometimes this helps free up resources</li>
+                        <li><strong>Wait for first startup</strong> - The first run is always slower while loading data</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        
+        <div class="troubleshoot-card">
+            <div class="troubleshoot-header">
+                <h4>❌ No sanctions data loaded</h4>
+            </div>
+            <div class="troubleshoot-body">
+                <h5>What this means:</h5>
+                <p>The sanctions data files might be missing or corrupted.</p>
+                
+                <div class="fix-steps">
+                    <h5>Things to try:</h5>
+                    <ol>
+                        <li><strong>Wait for initialization</strong> - First startup loads 160MB+ of data, which takes time</li>
+                        <li><strong>Restart the application</strong> - This often resolves data loading issues</li>
+                        <li><strong>Check logs for errors</strong>:
+                            <ul>
+                                <li>Windows: Use "View Logs" from launcher</li>
+                                <li>Ubuntu: <code>cd ~/Mkweli && docker-compose logs</code></li>
+                            </ul>
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emergency Section -->
+        <h2>🚨 Emergency: Nothing Works</h2>
+        
+        <div class="emergency-box">
+            <h3>Complete Reset Procedure</h3>
+            <p>If nothing else works, try a complete reset:</p>
+            
+            <div class="os-content windows active">
+                <ol>
+                    <li>Open the Mkweli launcher and select "Stop Application"</li>
+                    <li>Close Docker Desktop (right-click whale icon → Quit)</li>
+                    <li>Restart your computer</li>
+                    <li>Open Docker Desktop and wait for it to fully start</li>
+                    <li>Open Mkweli launcher and select "Start Application"</li>
+                    <li>Wait 5 minutes for everything to initialize</li>
+                </ol>
+            </div>
+            
+            <div class="os-content ubuntu">
+                <ol>
+                    <li>Open Terminal</li>
+                    <li>Run: <code>cd ~/Mkweli && docker-compose down</code></li>
+                    <li>Run: <code>sudo systemctl restart docker</code></li>
+                    <li>Restart your computer: <code>sudo reboot</code></li>
+                    <li>After reboot, open Terminal</li>
+                    <li>Run: <code>cd ~/Mkweli && docker-compose up -d</code></li>
+                    <li>Wait 5 minutes for everything to initialize</li>
+                </ol>
+            </div>
+        </div>
+        
+        <div class="info-box warning">
+            <span class="icon">🆘</span>
+            <div class="content">
+                <strong>Still Having Problems?</strong><br>
+                Contact support at <a href="mailto:gilbert@mkweli.tech">gilbert@mkweli.tech</a> with:
+                <ul>
+                    <li>Your operating system (Windows 10/11 or Ubuntu version)</li>
+                    <li>What you were trying to do</li>
+                    <li>The exact error message (if any)</li>
+                    <li>Screenshots if possible</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Quick Tests -->
+        <h2>🧪 Quick Health Tests</h2>
+        
+        <p>Use these quick commands to check if things are working:</p>
+        
+        <div class="os-content windows active">
+            <table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
+                <tr style="background: var(--primary); color: white;">
+                    <th style="padding: 0.75rem; text-align: left;">Test</th>
+                    <th style="padding: 0.75rem; text-align: left;">What to Do</th>
+                    <th style="padding: 0.75rem; text-align: left;">Expected Result</th>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">Docker running?</td>
+                    <td style="padding: 0.75rem;">Look for whale icon in taskbar</td>
+                    <td style="padding: 0.75rem;">🐳 icon visible and not animating</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">Mkweli running?</td>
+                    <td style="padding: 0.75rem;">Launcher → Check Status</td>
+                    <td style="padding: 0.75rem;">Shows "running" or "healthy"</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">Web accessible?</td>
+                    <td style="padding: 0.75rem;">Browser → localhost:8000</td>
+                    <td style="padding: 0.75rem;">Login page appears</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="os-content ubuntu">
+            <table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
+                <tr style="background: var(--primary); color: white;">
+                    <th style="padding: 0.75rem; text-align: left;">Test</th>
+                    <th style="padding: 0.75rem; text-align: left;">Command</th>
+                    <th style="padding: 0.75rem; text-align: left;">Expected Result</th>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">Docker installed?</td>
+                    <td style="padding: 0.75rem;"><code>docker --version</code></td>
+                    <td style="padding: 0.75rem;">Shows version number</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">Docker running?</td>
+                    <td style="padding: 0.75rem;"><code>docker ps</code></td>
+                    <td style="padding: 0.75rem;">Shows table (may be empty)</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">Mkweli running?</td>
+                    <td style="padding: 0.75rem;"><code>docker ps | grep mkweli</code></td>
+                    <td style="padding: 0.75rem;">Shows container info</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">Web accessible?</td>
+                    <td style="padding: 0.75rem;"><code>curl -s localhost:8000 | head</code></td>
+                    <td style="padding: 0.75rem;">Shows HTML output</td>
+                </tr>
+            </table>
+        </div>
+        
+        <footer class="footer">
+            <p><strong>Mkweli AML</strong> - Free and Open Source Sanctions Screening</p>
+            <p><a href="https://mkweli.tech">mkweli.tech</a> | <a href="https://github.com/gilbertbouic/Mkweli">GitHub</a> | <a href="mailto:gilbert@mkweli.tech">Support</a></p>
+            <p style="margin-top: 1rem;"><a href="daily-usage.html">→ Daily Usage Guide</a> | <a href="install-windows-complete.html">Windows Guide</a> | <a href="install-ubuntu-complete.html">Ubuntu Guide</a></p>
+        </footer>
+    </div>
+    
+    <script>
+        function switchOS(os) {
+            // Update tabs
+            document.querySelectorAll('.os-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update content sections
+            document.querySelectorAll('.os-content').forEach(content => {
+                if (content.classList.contains(os)) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+        }
+        
+        function toggleCheck(item) {
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            checkbox.checked = !checkbox.checked;
+            if (checkbox.checked) {
+                item.classList.add('checked');
+            } else {
+                item.classList.remove('checked');
+            }
+        }
+    </script>
+</body>
+</html>
