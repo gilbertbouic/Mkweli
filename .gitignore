@@ -44,3 +44,7 @@ temp/
 secrets.json
 config.local.py
 
+# Windows Installer Build Artifacts
+windows-installer/output/
+windows-installer/*.exe
+windows-installer/*.bmp
