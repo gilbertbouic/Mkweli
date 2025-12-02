@@ -190,7 +190,7 @@ def check_sanctions():
         matcher = get_matcher_instance()
         matches = matcher.find_matches(client_name, threshold=70)
         
-        screening_time = datetime.utcnow()
+        screening_time = datetime.now(timezone.utc)
         
         # Save screening report if user is logged in
         if 'user_id' in session:
