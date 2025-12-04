@@ -25,8 +25,8 @@ Windows: C:\Mkweli
 
 Ubuntu: /home/usr/Mkweli
 
-Step 2: Windows-Specific Setup
-(Skip if you're using Ubuntu)
+Step 2: Windows 10/11 -Specific Setup
+
 
 Open PowerShell as Administrator and run:
 
@@ -43,7 +43,10 @@ Right-click inside the folder and select “Open in Terminal” (Windows) or ope
 
 (Windows WSL users): In the terminal, type wsl to switch to the Ubuntu environment.
 
-Step 4: Install Dependencies
+Steps 4-6: Windows + Ubuntu 
+
+Step 4: 
+Install Dependencies
 Run the following commands in your terminal:
 
 sudo apt update && sudo apt upgrade -y
