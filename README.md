@@ -33,7 +33,7 @@ Open PowerShell as Administrator and run:
 powershell
 wsl --install
 
-Installs the latest version of Ubuntu from the Microsoft Store.
+Install the latest version of Ubuntu from the Microsoft Store.
 
 
 Step 3: Open Terminal in the Mkweli Folder
