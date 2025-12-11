@@ -17,7 +17,7 @@ Open-source Know-Your-Customer (KYC) Anti-Money-Laundering (AML) tool
 Follow these steps to install and run Mkweli on your system.
 
 Step 1: Download and Extract
-Download the Mkweli.zip file.
+Download the Mkweli.zip file from releases.
 
 Extract it to:
 
