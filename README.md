@@ -32,14 +32,14 @@ Open PowerShell as Administrator and run:
 
 powershell
 wsl --install
-Install the latest version of Ubuntu from the Microsoft Store.
 
-Once Ubuntu is installed, open it to set up your WSL environment.
+Installs the latest version of Ubuntu from the Microsoft Store.
+
 
 Step 3: Open Terminal in the Mkweli Folder
 Navigate to the extracted Mkweli folder in File Explorer.
 
-Right-click inside the folder and select “Open in Terminal” (Windows) or open a terminal in that location (Ubuntu).
+Right-click inside the folder and select “Open in Terminal” (Windows).
 
 (Windows WSL users): In the terminal, type wsl to switch to the Ubuntu environment.
 
